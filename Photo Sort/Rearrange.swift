@@ -40,16 +40,9 @@ private func arrangeImage(file: URL, outputDir: URL, options: ImageSortOptions) 
   let imageDate = getImageDate(url: file)
   guard let imageDate = imageDate else { return }
   
-  let month = {
-    let dateFormatter = DateFormatter()
-    let monthFormat = options.month ? options.monthFormat.dateFormat : ""
-    dateFormatter.dateFormat = monthFormat
-    return dateFormatter.string(from: imageDate)
-  }()
-  
   let pathTypes = [
     options.year ? String(imageDate.year) : "",
-    month,
+    options.month ? imageDate.month(from: options.monthFormat) : "",
     options.day ? String(imageDate.day) : ""
   ]
   

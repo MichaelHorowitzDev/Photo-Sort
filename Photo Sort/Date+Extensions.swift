@@ -17,4 +17,10 @@ extension Date {
   var day: Int {
     Calendar.current.component(.day, from: self)
   }
+
+  func month(from format: MonthFormat) -> String {
+    let dateFormatter = DateFormatter()
+    dateFormatter.dateFormat = format.dateFormat
+    return dateFormatter.string(from: self)
+  }
 }
