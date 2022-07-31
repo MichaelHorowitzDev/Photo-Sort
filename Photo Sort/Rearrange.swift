@@ -60,7 +60,7 @@ private func arrangeImage(file: URL, outputDir: URL, options: ImageSortOptions) 
   }
 }
 
-enum MonthFormat: String {
+enum MonthFormat: String, CaseIterable {
   case numeric = "Numeric: \"1\""
   case numericPadding = "Numeric with Padding: \"01\""
   case shorthand = "Shorthand: \"Jan\""
@@ -71,7 +71,7 @@ enum MonthFormat: String {
 struct ImageSortOptions {
   let year: Bool
   let month: Bool
-  var monthFormat: MonthFormat = .fullName
+  let monthFormat: MonthFormat
   let week: Bool
   let day: Bool
   let copy: Bool
