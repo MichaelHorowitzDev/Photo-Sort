@@ -23,6 +23,7 @@ private class ViewModel: ObservableObject {
   }
   @Published var year = true
   @Published var month = true
+  @Published var monthFormat: MonthFormat = .fullName
   @Published var copyPhotos = true
   @Published var filesOpen = false
   
@@ -79,37 +80,48 @@ struct ContentView: View {
   @ObservedObject private var viewModel = ViewModel()
   @State private var alertResult: AlertResult?
     var body: some View {
-      VStack {
-        Form {
-          HStack {
-            TextField("Image Folder", text: $viewModel.inputDir)
+      Form {
+        HStack {
+          TextField("Image Folder", text: $viewModel.inputDir)
+            .disabled(true)
+          Button {
+            viewModel.setInputDir()
+          } label: {
+            Image(systemName: "folder.fill.badge.plus")
+          }
+          Spacer()
+        }
+        HStack {
+          Group {
+            TextField("Output Directory", text: $viewModel.outputDir)
               .disabled(true)
             Button {
-              viewModel.setInputDir()
+              viewModel.setOutputDir()
             } label: {
               Image(systemName: "folder.fill.badge.plus")
             }
             Spacer()
           }
-          HStack {
-            Group {
-              TextField("Output Directory", text: $viewModel.outputDir)
-                .disabled(true)
-              Button {
-                viewModel.setOutputDir()
-              } label: {
-                Image(systemName: "folder.fill.badge.plus")
-              }
-              Spacer()
-            }
-            .disabled(viewModel.sameDir)
-            Toggle("Same as input", isOn: $viewModel.sameDir)
-          }
-          Toggle("Sort into years", isOn: $viewModel.year)
-          Toggle("Sort into months", isOn: $viewModel.month)
-          Toggle("Copy Photos", isOn: $viewModel.copyPhotos)
+          .disabled(viewModel.sameDir)
+          Toggle("Same as input", isOn: $viewModel.sameDir)
         }
-        .padding()
+        Toggle("Sort into years", isOn: $viewModel.year)
+        HStack(spacing: 20) {
+          Toggle("Sort into months", isOn: $viewModel.month)
+          HStack(spacing: 0) {
+            Text("Month Format: ")
+            Picker("", selection: $viewModel.monthFormat) {
+              ForEach(MonthFormat.allCases, id: \.self) {
+                Text($0.rawValue)
+              }
+            }
+            .fixedSize()
+            .labelsHidden()
+            .pickerStyle(.menu)
+          }
+          .disabled(!viewModel.month)
+        }
+        Toggle("Copy Photos", isOn: $viewModel.copyPhotos)
         Button {
           let input = URL(fileURLWithPath: viewModel.inputDir)
           let output = URL(fileURLWithPath: viewModel.outputDir)
@@ -120,10 +132,11 @@ struct ContentView: View {
               options: ImageSortOptions(
                 year: viewModel.year,
                 month: viewModel.month,
+                monthFormat: viewModel.monthFormat,
                 week: false,
                 day: false,
                 copy: viewModel.copyPhotos)
-              )
+            )
             self.alertResult = AlertResult(result: "Success Sorting Photos")
           } catch {
             self.alertResult = AlertResult(error: error)
@@ -136,6 +149,7 @@ struct ContentView: View {
           Alert(title: Text(alertResult.error ? "Error" : "Success"), message: Text(alertResult.result), dismissButton: .default(Text("OK")))
         }
       }
+      .padding()
       .disabled(viewModel.filesOpen)
       .frame(minWidth: 600, maxWidth: .infinity, minHeight: 500, maxHeight: .infinity)
     }
