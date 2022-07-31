@@ -27,6 +27,29 @@ private class ViewModel: ObservableObject {
   @Published var copyPhotos = true
   @Published var filesOpen = false
   
+  @Published var alertResult: AlertResult?
+  
+  func sortPhotos() {
+    let input = URL(fileURLWithPath: self.inputDir)
+    let output = URL(fileURLWithPath: self.outputDir)
+    do {
+      try sortImages(
+        inputDir: input,
+        outputDir: output,
+        options: ImageSortOptions(
+          year: self.year,
+          month: self.month,
+          monthFormat: self.monthFormat,
+          week: false,
+          day: false,
+          copy: self.copyPhotos)
+      )
+      self.alertResult = AlertResult(result: "Success Sorting Photos")
+    } catch {
+      self.alertResult = AlertResult(error: error)
+    }
+  }
+  
   func openFolderPath(result: @escaping (URL?) -> Void) {
     let panel = NSOpenPanel()
     panel.canChooseFiles = false
@@ -78,7 +101,6 @@ private struct AlertResult: Identifiable {
 
 struct ContentView: View {
   @ObservedObject private var viewModel = ViewModel()
-  @State private var alertResult: AlertResult?
     var body: some View {
       Form {
         HStack {
@@ -123,29 +145,12 @@ struct ContentView: View {
         }
         Toggle("Copy Photos", isOn: $viewModel.copyPhotos)
         Button {
-          let input = URL(fileURLWithPath: viewModel.inputDir)
-          let output = URL(fileURLWithPath: viewModel.outputDir)
-          do {
-            try sortImages(
-              inputDir: input,
-              outputDir: output,
-              options: ImageSortOptions(
-                year: viewModel.year,
-                month: viewModel.month,
-                monthFormat: viewModel.monthFormat,
-                week: false,
-                day: false,
-                copy: viewModel.copyPhotos)
-            )
-            self.alertResult = AlertResult(result: "Success Sorting Photos")
-          } catch {
-            self.alertResult = AlertResult(error: error)
-          }
+          viewModel.sortPhotos()
         } label: {
           Text("Sort Photos")
         }
         .disabled(viewModel.inputDir.isEmpty || viewModel.outputDir.isEmpty)
-        .alert(item: $alertResult) { alertResult in
+        .alert(item: $viewModel.alertResult) { alertResult in
           Alert(title: Text(alertResult.error ? "Error" : "Success"), message: Text(alertResult.result), dismissButton: .default(Text("OK")))
         }
       }
