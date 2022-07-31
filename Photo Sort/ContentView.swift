@@ -58,11 +58,7 @@ private class ViewModel: ObservableObject {
     panel.toolbarStyle = .expanded
     self.filesOpen = true
     panel.begin { response in
-      if response == .OK {
-        result(panel.url)
-      } else {
-        result(nil)
-      }
+      result(panel.url)
       self.filesOpen = false
     }
   }
