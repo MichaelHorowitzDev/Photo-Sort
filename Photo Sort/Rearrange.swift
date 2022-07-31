@@ -36,16 +36,27 @@ private func arrangeImage(file: URL, outputDir: URL, options: ImageSortOptions) 
   if !["jpeg", "jpeg"].contains(file.pathExtension) {
     return
   }
+  
   let imageDate = getImageDate(url: file)
   guard let imageDate = imageDate else { return }
+  
+  let month = {
+    let dateFormatter = DateFormatter()
+    let monthFormat = options.month ? options.monthFormat.dateFormat : ""
+    dateFormatter.dateFormat = monthFormat
+    return dateFormatter.string(from: imageDate)
+  }()
+  
   let pathTypes = [
     options.year ? String(imageDate.year) : "",
-    options.month ? String(imageDate.month) : "",
+    month,
     options.day ? String(imageDate.day) : ""
   ]
+  
   let outputURL = pathTypes.reduce(outputDir) { url, component in
     url.appendingPathComponent(component)
   }
+  
   do {
     try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
     if options.copy {
@@ -66,6 +77,21 @@ enum MonthFormat: String, CaseIterable {
   case shorthand = "Shorthand: \"Jan\""
   case fullName = "Full Name: \"January\""
   case narrowName = "Narrow Name: \"J\""
+  
+  var dateFormat: String {
+    switch self {
+    case .numeric:
+      return "M"
+    case .numericPadding:
+      return "MM"
+    case .shorthand:
+      return "MMM"
+    case .fullName:
+      return "MMMM"
+    case .narrowName:
+      return "MMMMM"
+    }
+  }
 }
 
 struct ImageSortOptions {
