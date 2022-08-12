@@ -54,13 +54,10 @@ private func arrangeImage(file: URL, outputDir: URL, options: ImageSortOptions) 
       try FileManager.default.moveItem(at: file, to: url)
     }
     let attributes: [FileAttributeKey: Any] = [
-      .creationDate: options.creationDateExif ? imageDate : .now,
-      .modificationDate: options.modificationDateExif ? imageDate : .now
+      .creationDate: options.creationDateExif ? imageDate : Date(),
+      .modificationDate: options.modificationDateExif ? imageDate : Date()
     ]
-
-    if options.creationDateExif {
-      try FileManager.default.setAttributes(attributes, ofItemAtPath: url.path)
-    }
+    try FileManager.default.setAttributes(attributes, ofItemAtPath: url.path)
   } catch {
     print("error moving file")
     print(error)
