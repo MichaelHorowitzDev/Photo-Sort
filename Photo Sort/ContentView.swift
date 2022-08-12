@@ -31,9 +31,9 @@ private class ViewModel: ObservableObject {
   @AppStorage("modificationDateExif") var modificationDateExif = true
 
   @Published var filesOpen = false
-  
+
   @Published var alertResult: AlertResult?
-  
+
   func sortPhotos() {
     let input = URL(fileURLWithPath: self.inputDir)
     let output = URL(fileURLWithPath: self.outputDir)
@@ -56,7 +56,7 @@ private class ViewModel: ObservableObject {
       self.alertResult = AlertResult(error: error)
     }
   }
-  
+
   func openFolderPath(result: @escaping (URL?) -> Void) {
     let panel = NSOpenPanel()
     panel.canChooseFiles = false
@@ -64,12 +64,12 @@ private class ViewModel: ObservableObject {
     panel.allowsMultipleSelection = false
     panel.toolbarStyle = .expanded
     self.filesOpen = true
-    panel.begin { response in
+    panel.begin { _ in
       result(panel.url)
       self.filesOpen = false
     }
   }
-  
+
   func setInputDir() {
     openFolderPath { url in
       if let url = url {
@@ -77,7 +77,7 @@ private class ViewModel: ObservableObject {
       }
     }
   }
-  
+
   func setOutputDir() {
     openFolderPath { url in
       if let url = url {
@@ -91,7 +91,7 @@ private struct AlertResult: Identifiable {
   let id = UUID()
   let result: String
   let error: Bool
-  
+
   init(result: String) {
     self.result = result
     self.error = false
@@ -157,7 +157,11 @@ struct ContentView: View {
         }
         .disabled(viewModel.inputDir.isEmpty || viewModel.outputDir.isEmpty)
         .alert(item: $viewModel.alertResult) { alertResult in
-          Alert(title: Text(alertResult.error ? "Error" : "Success"), message: Text(alertResult.result), dismissButton: .default(Text("OK")))
+          Alert(
+            title: Text(alertResult.error ? "Error" : "Success"),
+            message: Text(alertResult.result),
+            dismissButton: .default(Text("OK"))
+          )
         }
       }
       .padding()

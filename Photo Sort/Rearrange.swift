@@ -7,10 +7,9 @@
 
 import Photos
 
-
 private func getImageDate(url: URL) -> Date? {
   print("get image date url", url)
-  let imageSource = CGImageSourceCreateWithURL(url as CFURL,nil)!
+  let imageSource = CGImageSourceCreateWithURL(url as CFURL, nil)!
   let imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil)
   let dateFormatter = DateFormatter()
   dateFormatter.dateFormat = "yyyy:MM:dd HH:mm:ss"
@@ -32,20 +31,20 @@ private func arrangeImage(file: URL, outputDir: URL, options: ImageSortOptions) 
   if !["jpeg", "jpeg"].contains(file.pathExtension) {
     return
   }
-  
+
   let imageDate = getImageDate(url: file)
   guard let imageDate = imageDate else { return }
-  
+
   let pathTypes = [
     options.year ? String(imageDate.year) : "",
     options.month ? imageDate.month(from: options.monthFormat) : "",
     options.day ? String(imageDate.day) : ""
   ]
-  
+
   let outputURL = pathTypes.reduce(outputDir) { url, component in
     url.appendingPathComponent(component)
   }
-  
+
   do {
     try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
     let url = outputURL.appendingPathComponent(file.lastPathComponent)
@@ -75,7 +74,7 @@ enum MonthFormat: String, CaseIterable {
   case shorthand = "Shorthand: \"Jan\""
   case fullName = "Full Name: \"January\""
   case narrowName = "Narrow Name: \"J\""
-  
+
   var dateFormat: String {
     switch self {
     case .numeric:
@@ -106,7 +105,6 @@ struct ImageSortOptions {
 enum SortError: String, Error {
   case directoryDoesntExist = "Directory Doesn't Exist"
 }
-
 
 func sortImages(inputDir: URL, outputDir: URL, options: ImageSortOptions) throws {
   if let enumerator = getFiles(url: inputDir) {
