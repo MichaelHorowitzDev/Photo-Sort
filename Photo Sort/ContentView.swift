@@ -21,13 +21,14 @@ private class ViewModel: ObservableObject {
       outputDir = sameDir ? inputDir : ""
     }
   }
-  @Published var year = true
-  @Published var month = true
-  @Published var monthFormat: MonthFormat = .fullName
-  @Published var day = true
-  @Published var copyPhotos = true
-  @Published var creationDateExif = true
-  @Published var modificationDateExif = true
+
+  @AppStorage("year") var year = true
+  @AppStorage("month") var month = true
+  @AppStorage("monthFormat") var monthFormat: MonthFormat = .fullName
+  @AppStorage("day") var day = true
+  @AppStorage("copyPhotos") var copyPhotos = true
+  @AppStorage("creationDateExif") var creationDateExif = true
+  @AppStorage("modificationDateExif") var modificationDateExif = true
 
   @Published var filesOpen = false
   
