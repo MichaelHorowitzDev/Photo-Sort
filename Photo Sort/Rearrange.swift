@@ -54,7 +54,7 @@ private func arrangeImage(file: URL, outputDir: URL, options: ImageSortOptions) 
     } else {
       try FileManager.default.moveItem(at: file, to: url)
     }
-    var attributes: [FileAttributeKey: Any] = [
+    let attributes: [FileAttributeKey: Any] = [
       .creationDate: options.creationDateExif ? imageDate : .now,
       .modificationDate: options.modificationDateExif ? imageDate : .now
     ]
