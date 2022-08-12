@@ -26,6 +26,9 @@ private class ViewModel: ObservableObject {
   @Published var monthFormat: MonthFormat = .fullName
   @Published var day = true
   @Published var copyPhotos = true
+  @Published var creationDateExif = true
+  @Published var modificationDateExif = true
+
   @Published var filesOpen = false
   
   @Published var alertResult: AlertResult?
@@ -43,7 +46,9 @@ private class ViewModel: ObservableObject {
           monthFormat: self.monthFormat,
           week: false,
           day: self.day,
-          copy: self.copyPhotos)
+          copy: self.copyPhotos,
+          creationDateExif: self.creationDateExif,
+          modificationDateExif: self.modificationDateExif)
       )
       self.alertResult = AlertResult(result: "Success Sorting Photos")
     } catch {
@@ -142,6 +147,8 @@ struct ContentView: View {
         }
         Toggle("Sort into days", isOn: $viewModel.day)
         Toggle("Copy Photos", isOn: $viewModel.copyPhotos)
+        Toggle("Creation Date Same as EXIF Date", isOn: $viewModel.creationDateExif)
+        Toggle("Modification Date same as EXIF Date", isOn: $viewModel.modificationDateExif)
         Button {
           viewModel.sortPhotos()
         } label: {

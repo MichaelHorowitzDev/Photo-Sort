@@ -48,10 +48,19 @@ private func arrangeImage(file: URL, outputDir: URL, options: ImageSortOptions) 
   
   do {
     try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
+    let url = outputURL.appendingPathComponent(file.lastPathComponent)
     if options.copy {
-      try FileManager.default.copyItem(at: file, to: outputURL.appendingPathComponent(file.lastPathComponent))
+      try FileManager.default.copyItem(at: file, to: url)
     } else {
-      try FileManager.default.moveItem(at: file, to: outputURL.appendingPathComponent(file.lastPathComponent))
+      try FileManager.default.moveItem(at: file, to: url)
+    }
+    var attributes: [FileAttributeKey: Any] = [
+      .creationDate: options.creationDateExif ? imageDate : .now,
+      .modificationDate: options.modificationDateExif ? imageDate : .now
+    ]
+
+    if options.creationDateExif {
+      try FileManager.default.setAttributes(attributes, ofItemAtPath: url.path)
     }
   } catch {
     print("error moving file")
@@ -90,6 +99,8 @@ struct ImageSortOptions {
   let week: Bool
   let day: Bool
   let copy: Bool
+  let creationDateExif: Bool
+  let modificationDateExif: Bool
 }
 
 enum SortError: String, Error {
