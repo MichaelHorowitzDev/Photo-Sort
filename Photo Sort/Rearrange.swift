@@ -8,7 +8,6 @@
 import Photos
 
 private func getImageDate(url: URL) -> Date? {
-  print("get image date url", url)
   let imageSource = CGImageSourceCreateWithURL(url as CFURL, nil)!
   let imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil)
   let dateFormatter = DateFormatter()
@@ -66,8 +65,6 @@ private func arrangeImage(file: URL, outputDir: URL, options: ImageSortOptions) 
     }
 
   } catch {
-    print("error moving file")
-    print(error)
     throw error
   }
 }
