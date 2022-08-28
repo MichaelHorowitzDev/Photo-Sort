@@ -72,7 +72,7 @@ private class ViewModel: ObservableObject {
 
   func setInputDir() {
     openFolderPath { url in
-      if let url = url {
+      if let url {
         self.inputDir = url.path
       }
     }
@@ -80,7 +80,7 @@ private class ViewModel: ObservableObject {
 
   func setOutputDir() {
     openFolderPath { url in
-      if let url = url {
+      if let url {
         self.outputDir = url.path
       }
     }

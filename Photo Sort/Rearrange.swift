@@ -33,7 +33,7 @@ private func arrangeImage(file: URL, outputDir: URL, options: ImageSortOptions) 
   }
 
   let imageDate = getImageDate(url: file)
-  guard let imageDate = imageDate else { return }
+  guard let imageDate else { return }
 
   let pathTypes = [
     options.year ? String(imageDate.year) : "",
