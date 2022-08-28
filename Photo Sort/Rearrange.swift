@@ -39,7 +39,7 @@ private func arrangeImage(file: URL, outputDir: URL, options: ImageSortOptions) 
     options.year ? String(imageDate.year) : "",
     options.month ? imageDate.month(from: options.monthFormat) : "",
     options.day ? String(imageDate.day) : ""
-  ]
+  ].filter { !$0.isEmpty }
 
   let outputURL = pathTypes.reduce(outputDir) { url, component in
     url.appendingPathComponent(component)
