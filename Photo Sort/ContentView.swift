@@ -37,23 +37,29 @@ private class ViewModel: ObservableObject {
   func sortPhotos() {
     let input = URL(fileURLWithPath: self.inputDir)
     let output = URL(fileURLWithPath: self.outputDir)
-    do {
-      try sortImages(
-        inputDir: input,
-        outputDir: output,
-        options: ImageSortOptions(
-          year: self.year,
-          month: self.month,
-          monthFormat: self.monthFormat,
-          week: false,
-          day: self.day,
-          copy: self.copyPhotos,
-          creationDateExif: self.creationDateExif,
-          modificationDateExif: self.modificationDateExif)
-      )
-      self.alertResult = AlertResult(result: "Success Sorting Photos")
-    } catch {
-      self.alertResult = AlertResult(error: error)
+    DispatchQueue.global(qos: .userInitiated).async {
+      do {
+        try sortImages(
+          inputDir: input,
+          outputDir: output,
+          options: ImageSortOptions(
+            year: self.year,
+            month: self.month,
+            monthFormat: self.monthFormat,
+            week: false,
+            day: self.day,
+            copy: self.copyPhotos,
+            creationDateExif: self.creationDateExif,
+            modificationDateExif: self.modificationDateExif)
+        )
+        DispatchQueue.main.async {
+          self.alertResult = AlertResult(result: "Success Sorting Photos")
+        }
+      } catch {
+        DispatchQueue.main.async {
+          self.alertResult = AlertResult(error: error)
+        }
+      }
     }
   }
 
