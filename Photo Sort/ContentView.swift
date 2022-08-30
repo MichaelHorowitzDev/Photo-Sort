@@ -32,6 +32,7 @@ private class ViewModel: ObservableObject {
 
   @Published var filesOpen = false
 
+  @Published var progress: Progress?
   @Published var alertResult: AlertResult?
 
   func sortPhotos() {
@@ -51,12 +52,18 @@ private class ViewModel: ObservableObject {
             copy: self.copyPhotos,
             creationDateExif: self.creationDateExif,
             modificationDateExif: self.modificationDateExif)
-        )
+        ) { progress in
+          DispatchQueue.main.async {
+            self.progress = progress
+          }
+        }
         DispatchQueue.main.async {
+          self.progress = nil
           self.alertResult = AlertResult(result: "Success Sorting Photos")
         }
       } catch {
         DispatchQueue.main.async {
+          self.progress = nil
           self.alertResult = AlertResult(error: error)
         }
       }
@@ -152,10 +159,12 @@ struct ContentView: View {
           }
           .disabled(!viewModel.month)
         }
-        Toggle("Sort into days", isOn: $viewModel.day)
-        Toggle("Copy Photos", isOn: $viewModel.copyPhotos)
-        Toggle("Creation Date Same as EXIF Date", isOn: $viewModel.creationDateExif)
-        Toggle("Modification Date same as EXIF Date", isOn: $viewModel.modificationDateExif)
+        Group {
+          Toggle("Sort into days", isOn: $viewModel.day)
+          Toggle("Copy Photos", isOn: $viewModel.copyPhotos)
+          Toggle("Creation Date Same as EXIF Date", isOn: $viewModel.creationDateExif)
+          Toggle("Modification Date same as EXIF Date", isOn: $viewModel.modificationDateExif)
+        }
         Button {
           viewModel.sortPhotos()
         } label: {
@@ -169,6 +178,14 @@ struct ContentView: View {
             dismissButton: .default(Text("OK"))
           )
         }
+
+        if let progress = viewModel.progress {
+          VStack {
+            ProgressView(value: progress.fractionCompleted)
+            Text("\(progress.completedUnitCount) / \(progress.totalUnitCount)")
+          }
+        }
+
       }
       .padding()
       .disabled(viewModel.filesOpen)

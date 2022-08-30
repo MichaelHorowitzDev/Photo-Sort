@@ -107,12 +107,17 @@ enum SortError: String, Error {
   case directoryDoesntExist = "Directory Doesn't Exist"
 }
 
-func sortImages(inputDir: URL, outputDir: URL, options: ImageSortOptions) throws {
+func sortImages(inputDir: URL, outputDir: URL, options: ImageSortOptions, currentProgress: (Progress) -> Void) throws {
   if let enumerator = getFiles(url: inputDir) {
-    while let file = enumerator.nextObject() as? String {
+    let allFiles = enumerator.allObjects.compactMap { $0 as? String }
+    let count = allFiles.count
+    let progress = Progress(totalUnitCount: Int64(count))
+    for (index, file) in allFiles.enumerated() {
       let fileURL = inputDir.appendingPathComponent(file)
       do {
         try arrangeImage(file: fileURL, outputDir: outputDir, options: options)
+        progress.completedUnitCount = Int64(index + 1)
+        currentProgress(progress)
       } catch {
         throw error
       }
