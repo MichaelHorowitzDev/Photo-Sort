@@ -26,6 +26,8 @@ private func getFiles(url: URL) -> FileManager.DirectoryEnumerator? {
   FileManager.default.enumerator(atPath: url.path)
 }
 
+private var processedDates = [String: Int]()
+
 private func arrangeImage(file: URL, outputDir: URL, options: ImageSortOptions) throws {
   if !["jpeg", "jpeg"].contains(file.pathExtension) {
     return
@@ -46,7 +48,25 @@ private func arrangeImage(file: URL, outputDir: URL, options: ImageSortOptions) 
 
   do {
     try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
-    let url = outputURL.appendingPathComponent(file.lastPathComponent)
+    let url: URL
+    if options.renamePhotosToExif {
+      let dateFormatter = DateFormatter()
+      dateFormatter.dateFormat = options.renamePhotosFormat
+      let date = dateFormatter.string(from: imageDate)
+      processedDates[date, default: 0] += 1
+      let number = processedDates[date]!
+      let numberFormatter = NumberFormatter()
+      numberFormatter.minimumIntegerDigits = 3
+      let formattedNumber = numberFormatter.string(from: NSNumber(value: number))!
+      var path = date + "_\(formattedNumber)"
+      if !file.pathExtension.isEmpty {
+        path.append("." + file.pathExtension)
+      }
+      url = outputURL.appendingPathComponent(path)
+    } else {
+      url = outputURL.appendingPathComponent(file.lastPathComponent)
+    }
+
     if options.copy {
       try FileManager.default.copyItem(at: file, to: url)
     } else {
@@ -101,6 +121,8 @@ struct ImageSortOptions {
   let copy: Bool
   let creationDateExif: Bool
   let modificationDateExif: Bool
+  let renamePhotosToExif: Bool
+  let renamePhotosFormat: String
 }
 
 enum SortError: String, Error {

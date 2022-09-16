@@ -29,6 +29,8 @@ private class ViewModel: ObservableObject {
   @AppStorage("copyPhotos") var copyPhotos = true
   @AppStorage("creationDateExif") var creationDateExif = true
   @AppStorage("modificationDateExif") var modificationDateExif = true
+  @AppStorage("rename") var rename = false
+  @AppStorage("renameFormat") var renameFormat = "yyyy-MM-dd"
 
   @Published var filesOpen = false
 
@@ -51,7 +53,9 @@ private class ViewModel: ObservableObject {
             day: self.day,
             copy: self.copyPhotos,
             creationDateExif: self.creationDateExif,
-            modificationDateExif: self.modificationDateExif)
+            modificationDateExif: self.modificationDateExif,
+            renamePhotosToExif: self.rename,
+            renamePhotosFormat: self.renameFormat)
         ) { progress in
           DispatchQueue.main.async {
             self.progress = progress
@@ -164,6 +168,22 @@ struct ContentView: View {
           Toggle("Copy Photos", isOn: $viewModel.copyPhotos)
           Toggle("Creation Date Same as EXIF Date", isOn: $viewModel.creationDateExif)
           Toggle("Modification Date same as EXIF Date", isOn: $viewModel.modificationDateExif)
+          HStack(spacing: 20) {
+            Toggle("Rename Files", isOn: $viewModel.rename)
+            VStack {
+              HStack {
+                TextField("", text: $viewModel.renameFormat)
+                  .disabled(!viewModel.rename)
+                Link(destination: URL(string: "https://nsdateformatter.com/")!) {
+                  Text("􀅴")
+                }
+              }
+              Text("Format for Current Date:")
+              Text(Date().formatted(format: viewModel.renameFormat))
+            }
+            .fixedSize(horizontal: true, vertical: false)
+            .labelsHidden()
+          }
         }
         Button {
           viewModel.sortPhotos()
