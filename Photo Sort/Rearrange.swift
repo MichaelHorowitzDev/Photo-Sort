@@ -50,8 +50,8 @@ private func arrangeImage(file: URL, outputDir: URL, options: ImageSortOptions) 
     let url: URL
     if options.renamePhotosToExif {
       let date = imageDate.formatted(format: options.renamePhotosFormat)
-      let number = processedDates[date, default: 0]
       processedDates[date, default: 0] += 1
+      let number = processedDates[date]!
       let formattedNumber = NumberFormatterValue(number)
         .minimumIntegerDigits(3)
         .string()!
