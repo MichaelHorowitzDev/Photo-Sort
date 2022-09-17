@@ -50,14 +50,12 @@ private func arrangeImage(file: URL, outputDir: URL, options: ImageSortOptions) 
     try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
     let url: URL
     if options.renamePhotosToExif {
-      let dateFormatter = DateFormatter()
-      dateFormatter.dateFormat = options.renamePhotosFormat
-      let date = dateFormatter.string(from: imageDate)
+      let date = imageDate.formatted(format: options.renamePhotosFormat)
+      let number = processedDates[date, default: 0]
       processedDates[date, default: 0] += 1
-      let number = processedDates[date]!
-      let numberFormatter = NumberFormatter()
-      numberFormatter.minimumIntegerDigits = 3
-      let formattedNumber = numberFormatter.string(from: NSNumber(value: number))!
+      let formattedNumber = NumberFormatterValue(number)
+        .minimumIntegerDigits(3)
+        .string()!
       var path = date + "_\(formattedNumber)"
       if !file.pathExtension.isEmpty {
         path.append("." + file.pathExtension)
