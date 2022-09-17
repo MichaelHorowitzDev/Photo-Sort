@@ -190,7 +190,7 @@ struct ContentView: View {
         } label: {
           Text("Sort Photos")
         }
-        .disabled(viewModel.inputDir.isEmpty || viewModel.outputDir.isEmpty)
+        .disabled(viewModel.inputDir.isEmpty || viewModel.outputDir.isEmpty || viewModel.progress != nil)
         .alert(item: $viewModel.alertResult) { alertResult in
           Alert(
             title: Text(alertResult.error ? "Error" : "Success"),
