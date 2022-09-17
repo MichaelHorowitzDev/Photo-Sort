@@ -29,10 +29,6 @@ private func getFiles(url: URL) -> FileManager.DirectoryEnumerator? {
 private var processedDates = [String: Int]()
 
 private func arrangeImage(file: URL, outputDir: URL, options: ImageSortOptions) throws {
-  if !["jpeg", "jpeg"].contains(file.pathExtension) {
-    return
-  }
-
   guard let imageDate = getImageDate(url: file) else { return }
 
   let pathTypes = [
