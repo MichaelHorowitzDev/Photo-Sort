@@ -140,4 +140,5 @@ func sortImages(inputDir: URL, outputDir: URL, options: ImageSortOptions, curren
   } else {
     throw SortError.directoryDoesntExist
   }
+  processedDates = [:]
 }
