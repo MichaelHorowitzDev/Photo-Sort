@@ -8,7 +8,7 @@
 import Photos
 
 private func getImageDate(url: URL) -> Date? {
-  let imageSource = CGImageSourceCreateWithURL(url as CFURL, nil)!
+  guard let imageSource = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
   let imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil)
   let dateFormatter = DateFormatter()
   dateFormatter.dateFormat = "yyyy:MM:dd HH:mm:ss"
