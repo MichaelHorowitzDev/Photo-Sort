@@ -21,7 +21,7 @@ struct NumberFormatterValue {
   func string() -> String? {
     let numberFormatter = NumberFormatter()
     numberFormatter.minimumIntegerDigits = minimumIntegerDigits
-    return nil
+    return numberFormatter.string(from: self.number)
   }
   private var minimumIntegerDigits: Int = 0
 }
