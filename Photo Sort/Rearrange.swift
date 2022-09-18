@@ -120,6 +120,7 @@ struct ImageSortOptions {
 
 enum SortError: String, LocalizedError {
   case directoryDoesntExist = "Directory Doesn't Exist"
+  case operationCancelled = "Operation Cancelled"
 
   var errorDescription: String? {
     rawValue
@@ -132,7 +133,14 @@ func sortImages(inputDir: URL, outputDir: URL, options: ImageSortOptions, curren
     let allFiles = enumerator.allObjects.compactMap { $0 as? String }
     let count = allFiles.count
     let progress = Progress(totalUnitCount: Int64(count))
+    var isCancelled = false
+    progress.cancellationHandler = {
+      isCancelled = true
+    }
     for (index, file) in allFiles.enumerated() {
+      if isCancelled {
+        throw SortError.operationCancelled
+      }
       let fileURL = inputDir.appendingPathComponent(file)
       do {
         try arrangeImage(file: fileURL, outputDir: outputDir, options: options)

@@ -185,12 +185,22 @@ struct ContentView: View {
             .labelsHidden()
           }
         }
-        Button {
-          viewModel.sortPhotos()
-        } label: {
-          Text("Sort Photos")
+        Group {
+          if let progress = viewModel.progress {
+            Button {
+              progress.cancel()
+            } label: {
+              Text("Cancel")
+            }
+          } else {
+            Button {
+              viewModel.sortPhotos()
+            } label: {
+              Text("Sort Photos")
+            }
+          }
         }
-        .disabled(viewModel.inputDir.isEmpty || viewModel.outputDir.isEmpty || viewModel.progress != nil)
+        .disabled(viewModel.inputDir.isEmpty || viewModel.outputDir.isEmpty)
         .alert(item: $viewModel.alertResult) { alertResult in
           Alert(
             title: Text(alertResult.error ? "Error" : "Success"),
