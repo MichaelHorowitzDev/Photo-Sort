@@ -123,6 +123,7 @@ enum SortError: String, Error {
 }
 
 func sortImages(inputDir: URL, outputDir: URL, options: ImageSortOptions, currentProgress: (Progress) -> Void) throws {
+  processedDates.removeAll()
   if let enumerator = getFiles(url: inputDir) {
     let allFiles = enumerator.allObjects.compactMap { $0 as? String }
     let count = allFiles.count
@@ -140,5 +141,4 @@ func sortImages(inputDir: URL, outputDir: URL, options: ImageSortOptions, curren
   } else {
     throw SortError.directoryDoesntExist
   }
-  processedDates.removeAll()
 }
