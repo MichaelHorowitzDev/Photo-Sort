@@ -118,8 +118,12 @@ struct ImageSortOptions {
   let renamePhotosFormat: String
 }
 
-enum SortError: String, Error {
+enum SortError: String, LocalizedError {
   case directoryDoesntExist = "Directory Doesn't Exist"
+
+  var errorDescription: String? {
+    rawValue
+  }
 }
 
 func sortImages(inputDir: URL, outputDir: URL, options: ImageSortOptions, currentProgress: (Progress) -> Void) throws {
