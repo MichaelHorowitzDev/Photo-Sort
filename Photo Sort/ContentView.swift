@@ -42,20 +42,22 @@ private class ViewModel: ObservableObject {
     let output = URL(fileURLWithPath: self.outputDir)
     DispatchQueue.global(qos: .userInitiated).async {
       do {
+        let options = ImageSortOptions(
+          year: self.year,
+          month: self.month,
+          monthFormat: self.monthFormat,
+          week: false,
+          day: self.day,
+          copy: self.copyPhotos,
+          creationDateExif: self.creationDateExif,
+          modificationDateExif: self.modificationDateExif,
+          renamePhotosToExif: self.rename,
+          renamePhotosFormat: self.renameFormat)
+
         try sortImages(
           inputDir: input,
           outputDir: output,
-          options: ImageSortOptions(
-            year: self.year,
-            month: self.month,
-            monthFormat: self.monthFormat,
-            week: false,
-            day: self.day,
-            copy: self.copyPhotos,
-            creationDateExif: self.creationDateExif,
-            modificationDateExif: self.modificationDateExif,
-            renamePhotosToExif: self.rename,
-            renamePhotosFormat: self.renameFormat)
+          options: options
         ) { progress in
           DispatchQueue.main.async {
             self.progress = progress
