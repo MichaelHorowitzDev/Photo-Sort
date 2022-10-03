@@ -20,7 +20,7 @@
 		8B3E448228D4C3E9006E6707 /* NumberFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NumberFormatter.swift; sourceTree = "<group>"; };
 		8B485D1F286A4574009B98BE /* Rearrange.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rearrange.swift; sourceTree = "<group>"; };
 		8B485D21286A58B5009B98BE /* Date+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+Extensions.swift"; sourceTree = "<group>"; };
-		8BAC2D74282AB7A000C428F5 /* Photo Oorganizer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Photo Oorganizer.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		8BAC2D74282AB7A000C428F5 /* Photo Reorganizer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Photo Reorganizer.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		8BAC2D77282AB7A000C428F5 /* Photo_SortApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Photo_SortApp.swift; sourceTree = "<group>"; };
 		8BAC2D79282AB7A000C428F5 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		8BAC2D7B282AB7A100C428F5 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -51,7 +51,7 @@
 		8BAC2D75282AB7A000C428F5 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				8BAC2D74282AB7A000C428F5 /* Photo Oorganizer.app */,
+				8BAC2D74282AB7A000C428F5 /* Photo Reorganizer.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -98,7 +98,7 @@
 			);
 			name = "Photo Sort";
 			productName = "Photo Sort";
-			productReference = 8BAC2D74282AB7A000C428F5 /* Photo Oorganizer.app */;
+			productReference = 8BAC2D74282AB7A000C428F5 /* Photo Reorganizer.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -325,7 +325,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.michaelhorowitz.Photo-Sort";
-				PRODUCT_NAME = "Photo Oorganizer";
+				PRODUCT_NAME = "Photo Reorganizer";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = PHOTOSORTAPPSTORE;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -360,7 +360,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.michaelhorowitz.Photo-Sort";
-				PRODUCT_NAME = "Photo Oorganizer";
+				PRODUCT_NAME = "Photo Reorganizer";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = PHOTOSORTAPPSTORE;
 				SWIFT_EMIT_LOC_STRINGS = YES;
