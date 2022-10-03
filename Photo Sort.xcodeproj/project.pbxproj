@@ -61,12 +61,12 @@
 			children = (
 				8B485D1F286A4574009B98BE /* Rearrange.swift */,
 				8B485D21286A58B5009B98BE /* Date+Extensions.swift */,
+				8B3E448228D4C3E9006E6707 /* NumberFormatter.swift */,
 				8BAC2D8D282CA36E00C428F5 /* Photo-Sort-Info.plist */,
 				8BAC2D77282AB7A000C428F5 /* Photo_SortApp.swift */,
 				8BAC2D79282AB7A000C428F5 /* ContentView.swift */,
 				8BAC2D7B282AB7A100C428F5 /* Assets.xcassets */,
 				8BAC2D80282AB7A100C428F5 /* Photo_Sort.entitlements */,
-				8B3E448228D4C3E9006E6707 /* NumberFormatter.swift */,
 				8BAC2D7D282AB7A100C428F5 /* Preview Content */,
 			);
 			path = "Photo Sort";
@@ -303,6 +303,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = "Photo Sort/Photo_Sort.entitlements";
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
@@ -334,6 +335,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = "Photo Sort/Photo_Sort.entitlements";
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
