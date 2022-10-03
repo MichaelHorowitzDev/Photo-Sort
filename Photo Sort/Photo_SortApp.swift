@@ -16,9 +16,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 @main
 struct PhotoSortApp: App {
   @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
+  var body: some Scene {
+    WindowGroup {
+      ContentView()
     }
+  }
 }
