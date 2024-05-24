@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import StoreKit
 
 private class ViewModel: ObservableObject {
   @Published var inputDir = "" {
@@ -221,10 +222,16 @@ struct ContentView: View {
         }
         .padding()
         .disabled(viewModel.filesOpen)
-        .frame(minWidth: 600, maxWidth: .infinity, minHeight: 200, maxHeight: 400)
+        .frame(minWidth: 600, maxWidth: .infinity, minHeight: 300, maxHeight: .infinity)
         VStack {
           Spacer()
           HStack {
+            Button("Rate") {
+              if let url = URL(string: "macappstore://itunes.apple.com/app/id\(6443650295)?mt=12&action=write-review") {
+                NSWorkspace.shared.open(url)
+              }
+            }
+            .padding()
             Spacer()
             Button("Support") {
               let service = NSSharingService(named: NSSharingService.Name.composeEmail)
@@ -237,7 +244,6 @@ struct ContentView: View {
           }
         }
       }
-
     }
 }
 

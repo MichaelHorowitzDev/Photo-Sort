@@ -6,6 +6,7 @@
 //
 
 import Photos
+import EXIF
 
 private func getImageDate(url: URL) -> Date? {
   guard let imageSource = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
@@ -22,14 +23,49 @@ private func getImageDate(url: URL) -> Date? {
   }
 }
 
+private func getVideoDate(url: URL) -> Date? {
+  let asset = AVAsset(url: url)
+  let metadata = asset.metadata
+
+  return metadata.first(where: { $0.commonKey == .commonKeyCreationDate })?.dateValue
+}
+
+private func getTiffDate(url: URL) -> Date? {
+  let metadata = ImageMetadata(imageURL: url)
+
+  if let attributes = try? FileManager.default.attributesOfItem(atPath: url.path) as [FileAttributeKey: Any],
+      let creationDate = attributes[FileAttributeKey.creationDate] as? Date {
+      print(creationDate)
+      }
+
+  return metadata?.tiff?.dateTime ?? metadata?.exif?.dateTime ?? (try? FileManager.default.attributesOfItem(atPath: url.path) as [FileAttributeKey: Any])?[FileAttributeKey.creationDate] as? Date
+}
+
 private func getFiles(url: URL) -> FileManager.DirectoryEnumerator? {
   FileManager.default.enumerator(atPath: url.path)
 }
 
 private var processedDates = [String: Int]()
 
+func isVideoFileExtension(_ fileExtension: String) -> Bool {
+    let videoExtensions: Set<String> = ["mp4", "mov", "avi", "mkv", "flv", "wmv", "webm", "mpeg", "mpg", "m4v", "3gp", "3g2", "m2ts"]
+    return videoExtensions.contains(fileExtension.lowercased())
+}
+
+func isExifImageFileExtension(_ fileExtension: String) -> Bool {
+    let exifImageExtensions: Set<String> = ["jpg", "jpeg", "tiff", "tif", "heif", "heic", "dng", "raw"]
+    return exifImageExtensions.contains(fileExtension.lowercased())
+}
+
 private func arrangeImage(file: URL, outputDir: URL, options: ImageSortOptions) throws {
-  guard let imageDate = getImageDate(url: file) else { return }
+  print(file.pathExtension)
+  guard let imageDate = if file.pathExtension == "tiff" {
+    getTiffDate(url: file)
+  } else if isVideoFileExtension(file.pathExtension) {
+    getVideoDate(url: file)
+  } else {
+    getImageDate(url: file)
+  } else { return }
 
   let pathTypes = [
     options.year ? String(imageDate.year) : "",
