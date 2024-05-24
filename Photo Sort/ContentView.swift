@@ -124,104 +124,120 @@ private struct AlertResult: Identifiable {
 struct ContentView: View {
   @ObservedObject private var viewModel = ViewModel()
     var body: some View {
-      Form {
-        HStack {
-          TextField("Image Folder", text: $viewModel.inputDir)
-            .disabled(true)
-          Button {
-            viewModel.setInputDir()
-          } label: {
-            Image(systemName: "folder.fill.badge.plus")
-          }
-          Spacer()
-        }
-        HStack {
-          Group {
-            TextField("Output Directory", text: $viewModel.outputDir)
+      ZStack {
+        Form {
+          HStack {
+            TextField("Image Folder", text: $viewModel.inputDir)
               .disabled(true)
             Button {
-              viewModel.setOutputDir()
+              viewModel.setInputDir()
             } label: {
               Image(systemName: "folder.fill.badge.plus")
             }
             Spacer()
           }
-          .disabled(viewModel.sameDir)
-          Toggle("Same as input", isOn: $viewModel.sameDir)
-        }
-        Toggle("Sort into years", isOn: $viewModel.year)
-        HStack(spacing: 20) {
-          Toggle("Sort into months", isOn: $viewModel.month)
-          HStack(spacing: 0) {
-            Text("Month Format: ")
-            Picker("", selection: $viewModel.monthFormat) {
-              ForEach(MonthFormat.allCases, id: \.self) {
-                Text($0.rawValue)
+          HStack {
+            Group {
+              TextField("Output Directory", text: $viewModel.outputDir)
+                .disabled(true)
+              Button {
+                viewModel.setOutputDir()
+              } label: {
+                Image(systemName: "folder.fill.badge.plus")
               }
+              Spacer()
             }
-            .fixedSize()
-            .labelsHidden()
-            .pickerStyle(.menu)
+            .disabled(viewModel.sameDir)
+            Toggle("Same as input", isOn: $viewModel.sameDir)
           }
-          .disabled(!viewModel.month)
-        }
-        Group {
-          Toggle("Sort into days", isOn: $viewModel.day)
-          Toggle("Copy Photos", isOn: $viewModel.copyPhotos)
-          Toggle("Creation Date Same as EXIF Date", isOn: $viewModel.creationDateExif)
-          Toggle("Modification Date same as EXIF Date", isOn: $viewModel.modificationDateExif)
+          Toggle("Sort into years", isOn: $viewModel.year)
           HStack(spacing: 20) {
-            Toggle("Rename Files", isOn: $viewModel.rename)
-            VStack {
-              HStack {
-                TextField("", text: $viewModel.renameFormat)
-                  .disabled(!viewModel.rename)
-                Link(destination: URL(string: "https://nsdateformatter.com/")!) {
-                  Text("􀅴")
+            Toggle("Sort into months", isOn: $viewModel.month)
+            HStack(spacing: 0) {
+              Text("Month Format: ")
+              Picker("", selection: $viewModel.monthFormat) {
+                ForEach(MonthFormat.allCases, id: \.self) {
+                  Text($0.rawValue)
                 }
               }
-              Text("Format for Current Date:")
-              Text(Date().formatted(format: viewModel.renameFormat))
+              .fixedSize()
+              .labelsHidden()
+              .pickerStyle(.menu)
             }
-            .fixedSize(horizontal: true, vertical: false)
-            .labelsHidden()
+            .disabled(!viewModel.month)
           }
-        }
-        Group {
+          Group {
+            Toggle("Sort into days", isOn: $viewModel.day)
+            Toggle("Copy Photos", isOn: $viewModel.copyPhotos)
+            Toggle("Creation Date Same as EXIF Date", isOn: $viewModel.creationDateExif)
+            Toggle("Modification Date same as EXIF Date", isOn: $viewModel.modificationDateExif)
+            HStack(spacing: 20) {
+              Toggle("Rename Files", isOn: $viewModel.rename)
+              VStack {
+                HStack {
+                  TextField("", text: $viewModel.renameFormat)
+                    .disabled(!viewModel.rename)
+                  Link(destination: URL(string: "https://nsdateformatter.com/")!) {
+                    Text("􀅴")
+                  }
+                }
+                Text("Format for Current Date:")
+                Text(Date().formatted(format: viewModel.renameFormat))
+              }
+              .fixedSize(horizontal: true, vertical: false)
+              .labelsHidden()
+            }
+          }
+          Group {
+            if let progress = viewModel.progress {
+              Button {
+                progress.cancel()
+              } label: {
+                Text("Cancel")
+              }
+            } else {
+              Button {
+                viewModel.sortPhotos()
+              } label: {
+                Text("Sort Photos")
+              }
+            }
+          }
+          .disabled(viewModel.inputDir.isEmpty || viewModel.outputDir.isEmpty)
+          .alert(item: $viewModel.alertResult) { alertResult in
+            Alert(
+              title: Text(alertResult.error ? "Error" : "Success"),
+              message: Text(alertResult.result),
+              dismissButton: .default(Text("OK"))
+            )
+          }
+
           if let progress = viewModel.progress {
-            Button {
-              progress.cancel()
-            } label: {
-              Text("Cancel")
-            }
-          } else {
-            Button {
-              viewModel.sortPhotos()
-            } label: {
-              Text("Sort Photos")
+            VStack {
+              ProgressView(value: progress.fractionCompleted)
+              Text("\(progress.completedUnitCount) / \(progress.totalUnitCount)")
             }
           }
         }
-        .disabled(viewModel.inputDir.isEmpty || viewModel.outputDir.isEmpty)
-        .alert(item: $viewModel.alertResult) { alertResult in
-          Alert(
-            title: Text(alertResult.error ? "Error" : "Success"),
-            message: Text(alertResult.result),
-            dismissButton: .default(Text("OK"))
-          )
-        }
-
-        if let progress = viewModel.progress {
-          VStack {
-            ProgressView(value: progress.fractionCompleted)
-            Text("\(progress.completedUnitCount) / \(progress.totalUnitCount)")
+        .padding()
+        .disabled(viewModel.filesOpen)
+        .frame(minWidth: 600, maxWidth: .infinity, minHeight: 200, maxHeight: 400)
+        VStack {
+          Spacer()
+          HStack {
+            Spacer()
+            Button("Support") {
+              let service = NSSharingService(named: NSSharingService.Name.composeEmail)
+              service?.recipients = ["email@michaelhorowitz.dev"]
+              service?.subject = "Photo Reorganizer Support"
+              let version = ProcessInfo.processInfo.operatingSystemVersionString
+              service?.perform(withItems: ["\n\nmacOS \(version)\n\nApp Version 1.1"])
+            }
+            .padding()
           }
         }
-
       }
-      .padding()
-      .disabled(viewModel.filesOpen)
-      .frame(minWidth: 600, maxWidth: .infinity, minHeight: 500, maxHeight: .infinity)
+
     }
 }
 
