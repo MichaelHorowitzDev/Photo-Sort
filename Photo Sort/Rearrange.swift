@@ -110,11 +110,6 @@ private func arrangeImage(file: URL, outputDir: URL, options: ImageSortOptions) 
     ]
     try FileManager.default.setAttributes(attributes, ofItemAtPath: url.path)
 
-    var outputURL = outputURL
-    while outputURL != outputDir {
-      try FileManager.default.setAttributes(attributes, ofItemAtPath: outputURL.path)
-      outputURL.deleteLastPathComponent()
-    }
 
   } catch {
     throw error
