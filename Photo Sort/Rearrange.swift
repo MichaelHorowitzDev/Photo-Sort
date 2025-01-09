@@ -59,6 +59,9 @@ func isExifImageFileExtension(_ fileExtension: String) -> Bool {
 
 private func arrangeImage(file: URL, outputDir: URL, options: ImageSortOptions) throws {
   print(file.pathExtension)
+  if options.typesToSort == .videos && isExifImageFileExtension(file.pathExtension) || options.typesToSort == .photos && isVideoFileExtension(file.pathExtension) {
+    return
+  }
   guard let imageDate = if file.pathExtension == "tiff" {
     getTiffDate(url: file)
   } else if isVideoFileExtension(file.pathExtension) {
@@ -152,6 +155,7 @@ struct ImageSortOptions {
   let modificationDateExif: Bool
   let renamePhotosToExif: Bool
   let renamePhotosFormat: String
+  let typesToSort: TypesToSort
 }
 
 enum SortError: String, LocalizedError {

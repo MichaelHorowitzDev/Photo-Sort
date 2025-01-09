@@ -8,6 +8,10 @@
 import SwiftUI
 import StoreKit
 
+enum TypesToSort: String, CaseIterable {
+  case photos, videos, both
+}
+
 private class ViewModel: ObservableObject {
   @Published var inputDir = "" {
     didSet {
@@ -32,6 +36,7 @@ private class ViewModel: ObservableObject {
   @AppStorage("modificationDateExif") var modificationDateExif = true
   @AppStorage("rename") var rename = false
   @AppStorage("renameFormat") var renameFormat = "yyyy-MM-dd"
+  @AppStorage("typesToSort") var typesToSort = TypesToSort.both
 
   @Published var filesOpen = false
 
@@ -53,7 +58,8 @@ private class ViewModel: ObservableObject {
           creationDateExif: self.creationDateExif,
           modificationDateExif: self.modificationDateExif,
           renamePhotosToExif: self.rename,
-          renamePhotosFormat: self.renameFormat)
+          renamePhotosFormat: self.renameFormat,
+          typesToSort: self.typesToSort)
 
         try sortImages(
           inputDir: input,
@@ -174,6 +180,16 @@ struct ContentView: View {
             Toggle("Copy Photos", isOn: $viewModel.copyPhotos)
             Toggle("Creation Date Same as EXIF Date", isOn: $viewModel.creationDateExif)
             Toggle("Modification Date same as EXIF Date", isOn: $viewModel.modificationDateExif)
+            HStack {
+              Text("Types to Sort")
+              Picker("", selection: $viewModel.typesToSort) {
+                ForEach(TypesToSort.allCases.reversed(), id: \.self) { type in
+                  Text(type.rawValue.capitalized)
+                }
+              }
+              .fixedSize()
+              .labelsHidden()
+            }
             HStack(spacing: 20) {
               Toggle("Rename Files", isOn: $viewModel.rename)
               VStack {
