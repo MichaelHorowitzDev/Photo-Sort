@@ -84,9 +84,11 @@ private class ViewModel: ObservableObject {
     panel.allowsMultipleSelection = false
     panel.toolbarStyle = .expanded
     self.filesOpen = true
-    panel.begin { _ in
-      result(panel.url)
+    panel.begin { response in
       self.filesOpen = false
+      if response == .OK {
+        result(panel.url)
+      }
     }
   }
 
