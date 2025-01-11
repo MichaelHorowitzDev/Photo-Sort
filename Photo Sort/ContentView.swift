@@ -61,6 +61,8 @@ private class ViewModel: ObservableObject {
           renamePhotosFormat: self.renameFormat,
           typesToSort: self.typesToSort)
 
+        let semaphore = DispatchSemaphore(value: 0)
+
         try sortImages(
           inputDir: input,
           outputDir: output,
@@ -69,7 +71,14 @@ private class ViewModel: ObservableObject {
           DispatchQueue.main.async {
             self.progress = progress
           }
+        } duplicates: { duplicateFiles in
+          self.handleDuplicateFiles(sortOptions: options, duplicateFiles) {
+            semaphore.signal()
+          }
         }
+
+        semaphore.wait()
+
         DispatchQueue.main.async {
           self.progress = nil
           self.alertResult = AlertResult(result: "Success Sorting Photos")
@@ -80,6 +89,165 @@ private class ViewModel: ObservableObject {
           self.alertResult = AlertResult(error: error)
         }
       }
+    }
+  }
+
+  func handleDuplicateFiles(sortOptions: ImageSortOptions, _ duplicateFiles: Set<DuplicateFile>, onFinished: @escaping () -> Void) {
+    DispatchQueue.main.async {
+      let width = 400
+      let height = 410
+      let panel = NSPanel(
+        contentRect: NSRect(x: 0, y: 0, width: width, height: height),
+        styleMask: [.titled],
+        backing: .buffered,
+        defer: false
+      )
+
+      panel.title = "Duplicate File Detected"
+
+      struct MyView: View {
+        @State private var duplicateFiles: Set<DuplicateFile>
+        let panel: NSPanel
+        let sortOptions: ImageSortOptions
+        @State private var initialProgress: Progress
+
+        private var progress: (Progress) -> Void
+        private var onFinished: () -> Void
+
+        @State private var duplicateFile: DuplicateFile
+
+        init(duplicateFiles: Set<DuplicateFile>,
+             panel: NSPanel,
+             sortOptions: ImageSortOptions,
+             initialProgress: Progress,
+             progress: @escaping (Progress) -> Void,
+             onFinished: @escaping () -> Void
+        ) {
+          self.duplicateFiles = duplicateFiles
+          self.panel = panel
+          self.sortOptions = sortOptions
+          self.initialProgress = initialProgress
+          self.progress = progress
+          self.onFinished = onFinished
+          self._duplicateFile = State(wrappedValue: duplicateFiles.randomElement()!)
+        }
+
+        @State var applyToAll = false
+
+        var body: some View {
+          VStack {
+            Text("The file \"\(duplicateFile.source.lastPathComponent)\" already exists.")
+              .font(.headline)
+              .lineLimit(5)
+              .padding()
+
+            HStack(spacing: 10) {
+              VStack {
+                Text("Source")
+                Image(nsImage: NSImage(contentsOf: duplicateFile.source)!)
+                  .resizable()
+                  .aspectRatio(contentMode: .fit)
+                  .frame(width: 180, height: 240)
+              }
+              VStack {
+                Text("Desination")
+                Image(nsImage: NSImage(contentsOf: duplicateFile.destination)!)
+                  .resizable()
+                  .aspectRatio(contentMode: .fit)
+                  .frame(width: 180, height: 240)
+              }
+            }
+            .padding()
+
+            HStack {
+              if !duplicateFiles.isEmpty {
+                Toggle("Apply to all", isOn: $applyToAll)
+              }
+              Spacer()
+              ForEach(DupeFileOption.allCases, id: \.self) { option in
+                Button(option.rawValue) {
+                  if applyToAll {
+                    DispatchQueue.main.async {
+                      self.panel.close()
+                    }
+                    DispatchQueue.global(qos: .userInitiated).async {
+                      try! Photo_Reorganizer.handleDuplicates(
+                        options: self.sortOptions,
+                        initialProgress: self.initialProgress,
+                        currentProgress: { progress in
+                          print("progress change")
+                          self.progress(progress)
+                          DispatchQueue.main.async {
+                            self.initialProgress = progress
+                            if progress.fractionCompleted == 1 {
+                              self.onFinished()
+                            }
+                          }
+                        },
+                        dupeFileOption: option
+                      )
+                    }
+                  } else {
+                    DispatchQueue.global().async {
+                      try! Photo_Reorganizer.handleDuplicate(
+                        duplicateFile: self.duplicateFile,
+                        options: self.sortOptions,
+                        initialProgress: self.initialProgress,
+                        currentProgress: { progress in
+                          self.progress(progress)
+                          DispatchQueue.main.async {
+                            self.initialProgress = progress
+                            if progress.fractionCompleted == 1 {
+                              self.onFinished()
+                            }
+                          }
+                        },
+                        dupeFileOption: option
+                      )
+                    }
+                  }
+                  duplicateFiles.remove(duplicateFile)
+                  if duplicateFiles.isEmpty {
+                    self.panel.close()
+                  } else {
+                    duplicateFile = duplicateFiles.randomElement()!
+                  }
+                }
+              }
+            }
+            .padding(.horizontal)
+          }
+        }
+      }
+
+      let contentView = NSHostingView(
+        rootView:
+          MyView(duplicateFiles: duplicateFiles, panel: panel, sortOptions: sortOptions, initialProgress: self.progress ?? Progress()) { progress in
+            print(progress)
+            DispatchQueue.main.async {
+              self.progress = progress
+            }
+          } onFinished: { onFinished() }
+          .frame(width: Double(width), height: Double(height))
+          .padding(.top)
+      )
+
+      panel.contentView = contentView
+
+      if let parentWindow = NSApplication.shared.keyWindow {
+        let parentFrame = parentWindow.frame
+        let panelSize = panel.frame.size
+
+        let centerX = parentFrame.origin.x + (parentFrame.size.width - panelSize.width) / 2
+        let centerY = parentFrame.origin.y + (parentFrame.size.height - panelSize.height) / 2
+
+        panel.setFrameOrigin(NSPoint(x: centerX, y: centerY))
+      } else {
+        panel.center()
+      }
+
+      panel.makeKeyAndOrderFront(nil)
+
     }
   }
 

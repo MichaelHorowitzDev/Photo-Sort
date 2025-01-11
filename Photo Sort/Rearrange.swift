@@ -47,6 +47,15 @@ private func getFiles(url: URL) -> FileManager.DirectoryEnumerator? {
 
 private var processedDates = [String: Int]()
 
+struct DuplicateFile: Hashable {
+  let source: URL
+  let destination: URL
+}
+
+private var duplicateFiles = Set<DuplicateFile>()
+
+private var destinationFileMap = [URL: URL]()
+
 func isVideoFileExtension(_ fileExtension: String) -> Bool {
     let videoExtensions: Set<String> = ["mp4", "mov", "avi", "mkv", "flv", "wmv", "webm", "mpeg", "mpg", "m4v", "3gp", "3g2", "m2ts"]
     return videoExtensions.contains(fileExtension.lowercased())
@@ -57,10 +66,10 @@ func isExifImageFileExtension(_ fileExtension: String) -> Bool {
     return exifImageExtensions.contains(fileExtension.lowercased())
 }
 
-private func arrangeImage(file: URL, outputDir: URL, options: ImageSortOptions) throws {
+private func arrangeImage(file: URL, outputDir: URL, options: ImageSortOptions) throws -> Bool {
   print(file.pathExtension)
   if options.typesToSort == .videos && isExifImageFileExtension(file.pathExtension) || options.typesToSort == .photos && isVideoFileExtension(file.pathExtension) {
-    return
+    return true
   }
   guard let imageDate = if file.pathExtension == "tiff" {
     getTiffDate(url: file)
@@ -68,7 +77,7 @@ private func arrangeImage(file: URL, outputDir: URL, options: ImageSortOptions) 
     getVideoDate(url: file)
   } else {
     getImageDate(url: file)
-  } else { return }
+  } else { return true }
 
   let pathTypes = [
     options.year ? String(imageDate.year) : "",
@@ -80,24 +89,35 @@ private func arrangeImage(file: URL, outputDir: URL, options: ImageSortOptions) 
     url.appendingPathComponent(component)
   }
 
+  let originalDestinationURL: URL
+  originalDestinationURL = outputURL.appendingPathComponent(file.lastPathComponent)
+
+  if let url = destinationFileMap[originalDestinationURL] {
+    duplicateFiles.insert(DuplicateFile(source: file, destination: url))
+    return false
+  }
+
+  let url: URL
+  if options.renamePhotosToExif {
+    let date = imageDate.formatted(format: options.renamePhotosFormat)
+    processedDates[date, default: 0] += 1
+    let number = processedDates[date]!
+    let formattedNumber = NumberFormatterValue(number)
+      .minimumIntegerDigits(3)
+      .string()!
+    var path = date + "_\(formattedNumber)"
+    if !file.pathExtension.isEmpty {
+      path.append("." + file.pathExtension)
+    }
+    url = outputURL.appendingPathComponent(path)
+  } else {
+    url = outputURL.appendingPathComponent(file.lastPathComponent)
+  }
+
+  destinationFileMap[originalDestinationURL] = url
+
   do {
     try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
-    let url: URL
-    if options.renamePhotosToExif {
-      let date = imageDate.formatted(format: options.renamePhotosFormat)
-      processedDates[date, default: 0] += 1
-      let number = processedDates[date]!
-      let formattedNumber = NumberFormatterValue(number)
-        .minimumIntegerDigits(3)
-        .string()!
-      var path = date + "_\(formattedNumber)"
-      if !file.pathExtension.isEmpty {
-        path.append("." + file.pathExtension)
-      }
-      url = outputURL.appendingPathComponent(path)
-    } else {
-      url = outputURL.appendingPathComponent(file.lastPathComponent)
-    }
 
     if options.copy {
       try FileManager.default.copyItem(at: file, to: url)
@@ -110,10 +130,13 @@ private func arrangeImage(file: URL, outputDir: URL, options: ImageSortOptions) 
     ]
     try FileManager.default.setAttributes(attributes, ofItemAtPath: url.path)
 
-
+  } catch CocoaError.fileWriteFileExists {
+    duplicateFiles.insert(DuplicateFile(source: file, destination: url))
+    return false
   } catch {
     throw error
   }
+  return true
 }
 
 enum MonthFormat: String, CaseIterable {
@@ -162,29 +185,174 @@ enum SortError: String, LocalizedError {
   }
 }
 
-func sortImages(inputDir: URL, outputDir: URL, options: ImageSortOptions, currentProgress: (Progress) -> Void) throws {
+struct DupeFileOptions {
+  let option: DupeFileOption
+  let applyToAll: Bool
+}
+
+enum DupeFileOption: String, CaseIterable {
+  case keepBoth = "Keep Both"
+  case skip = "Skip"
+  case replace = "Replace"
+}
+
+func handleDuplicate(
+  duplicateFile: DuplicateFile,
+  options: ImageSortOptions,
+  initialProgress: Progress,
+  currentProgress: (Progress) -> Void,
+  dupeFileOption: DupeFileOption
+) throws {
+  let progress = initialProgress
+
+  let (file, destination) = (duplicateFile.source, duplicateFile.destination)
+
+  switch dupeFileOption {
+  case .keepBoth:
+    try keepBoth()
+  case .skip:
+    break
+  case .replace:
+    let semaphore = DispatchSemaphore(value: 0)
+    Task {
+      do {
+        try await destination.moveToTrash()
+        if options.copy {
+          try FileManager.default.copyItem(at: file, to: destination)
+        } else {
+          try FileManager.default.moveItem(at: file, to: destination)
+        }
+
+        semaphore.signal()
+      } catch {
+        throw error
+      }
+    }
+    semaphore.wait()
+  }
+
+  duplicateFiles.remove(duplicateFile)
+
+  progress.completedUnitCount = progress.completedUnitCount + 1
+
+  currentProgress(progress)
+
+  func keepBoth() throws {
+    guard let imageDate = if file.pathExtension == "tiff" {
+      getTiffDate(url: file)
+    } else if isVideoFileExtension(file.pathExtension) {
+      getVideoDate(url: file)
+    } else {
+      getImageDate(url: file)
+    } else { return }
+
+    var n = 1
+    while true {
+      let destination = destination.appendingToFileName(" (\(n))")
+      do {
+        if options.copy {
+          try FileManager.default.copyItem(at: file, to: destination)
+        } else {
+          try FileManager.default.moveItem(at: file, to: destination)
+        }
+        let attributes: [FileAttributeKey: Any] = [
+          .creationDate: options.creationDateExif ? imageDate : Date(),
+          .modificationDate: options.modificationDateExif ? imageDate : Date()
+        ]
+        try FileManager.default.setAttributes(attributes, ofItemAtPath: destination.path)
+
+        break
+
+      } catch CocoaError.fileWriteFileExists {
+        n += 1
+        continue
+      } catch {
+        throw error
+      }
+    }
+  }
+}
+
+private func handleDuplicates(duplicate: ((DuplicateFile, Bool) -> Bool)) {
+  if duplicateFiles.isEmpty {
+    return
+  }
+
+  print(duplicateFiles.count)
+
+  let result = duplicate(duplicateFiles.randomElement()!, duplicateFiles.count > 1)
+
+  if result {
+    handleDuplicates(duplicate: duplicate)
+  }
+}
+
+func handleDuplicates(
+  options: ImageSortOptions,
+  initialProgress: Progress,
+  currentProgress: (Progress) -> Void,
+  dupeFileOption: DupeFileOption
+) throws {
+  for duplicateFile in duplicateFiles {
+    try handleDuplicate(duplicateFile: duplicateFile, options: options, initialProgress: initialProgress, currentProgress: currentProgress, dupeFileOption: dupeFileOption)
+  }
+}
+
+func sortImages(
+  inputDir: URL,
+  outputDir: URL,
+  options: ImageSortOptions,
+  currentProgress: (Progress) -> Void,
+  duplicates: (Set<DuplicateFile>) -> Void
+) throws {
   processedDates.removeAll()
+  duplicateFiles.removeAll()
+  destinationFileMap.removeAll()
   if let enumerator = getFiles(url: inputDir) {
-    let allFiles = enumerator.allObjects.compactMap { $0 as? String }
+    let allFiles = enumerator.allObjects
+      .compactMap { $0 as? String }
+      .filter { str in
+        let file = inputDir.appendingPathComponent(str)
+
+        print(file.pathExtension)
+
+        let isPhoto = isExifImageFileExtension(file.pathExtension)
+        let isVideo = isVideoFileExtension(file.pathExtension)
+
+        return options.typesToSort == .photos && isPhoto || options.typesToSort == .videos && isVideo || options.typesToSort == .both && (isPhoto || isVideo)
+      }
     let count = allFiles.count
     let progress = Progress(totalUnitCount: Int64(count))
+
+    currentProgress(progress)
+
+    print("initial progress", progress)
     var isCancelled = false
     progress.cancellationHandler = {
       isCancelled = true
     }
-    for (index, file) in allFiles.enumerated() {
+    for file in allFiles {
       if isCancelled {
         throw SortError.operationCancelled
       }
       let fileURL = inputDir.appendingPathComponent(file)
       do {
-        try arrangeImage(file: fileURL, outputDir: outputDir, options: options)
-        progress.completedUnitCount = Int64(index + 1)
-        currentProgress(progress)
+        let result = try arrangeImage(file: fileURL, outputDir: outputDir, options: options)
+        print(progress.completedUnitCount)
+        if result {
+          print(fileURL)
+          progress.completedUnitCount = progress.completedUnitCount + 1
+          currentProgress(progress)
+        }
       } catch {
         throw error
       }
     }
+
+    if !duplicateFiles.isEmpty {
+      duplicates(duplicateFiles)
+    }
+
   } else {
     throw SortError.directoryDoesntExist
   }
