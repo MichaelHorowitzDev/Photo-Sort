@@ -357,3 +357,183 @@ func sortImages(
     throw SortError.directoryDoesntExist
   }
 }
+
+class ImageSorter {
+  private var processedDates = [String: Int]()
+  private var duplicateFiles = Set<DuplicateFile>()
+
+  private let inputDir: URL
+  private let outputDir: URL
+
+  private let options: ImageSortOptions
+
+  init(inputDir: URL, outputDir: URL, options: ImageSortOptions) {
+    self.inputDir = inputDir
+    self.outputDir = outputDir
+    self.options = options
+  }
+
+  func sortImages(
+    inputDir: URL,
+    outputDir: URL,
+    options: ImageSortOptions,
+    currentProgress: (Progress) -> Void,
+    duplicates: (Set<DuplicateFile>) -> Void
+  ) throws {
+    processedDates.removeAll()
+    duplicateFiles.removeAll()
+    destinationFileMap.removeAll()
+    if let enumerator = getFiles(url: inputDir) {
+      let allFiles = enumerator.allObjects
+        .compactMap { $0 as? String }
+        .filter { str in
+          let file = inputDir.appendingPathComponent(str)
+
+          print(file.pathExtension)
+
+          let isPhoto = isExifImageFileExtension(file.pathExtension)
+          let isVideo = isVideoFileExtension(file.pathExtension)
+
+          return options.typesToSort == .photos && isPhoto || options.typesToSort == .videos && isVideo || options.typesToSort == .both && (isPhoto || isVideo)
+        }
+      let count = allFiles.count
+      let progress = Progress(totalUnitCount: Int64(count))
+
+      currentProgress(progress)
+
+      print("initial progress", progress)
+      var isCancelled = false
+      progress.cancellationHandler = {
+        isCancelled = true
+      }
+      for file in allFiles {
+        if isCancelled {
+          throw SortError.operationCancelled
+        }
+        let fileURL = inputDir.appendingPathComponent(file)
+        do {
+          let result = try arrangeImage(file: fileURL, outputDir: outputDir, options: options)
+          print(progress.completedUnitCount)
+          if result {
+            print(fileURL)
+            progress.completedUnitCount = progress.completedUnitCount + 1
+            currentProgress(progress)
+          }
+        } catch {
+          throw error
+        }
+      }
+
+      if !duplicateFiles.isEmpty {
+        duplicates(duplicateFiles)
+      }
+
+    } else {
+      throw SortError.directoryDoesntExist
+    }
+  }
+
+  func handleDuplicates(
+    options: ImageSortOptions,
+    initialProgress: Progress,
+    currentProgress: (Progress) -> Void,
+    dupeFileOption: DupeFileOption
+  ) async throws {
+    for duplicateFile in duplicateFiles {
+      try await handleDuplicate(duplicateFile: duplicateFile, options: options, initialProgress: initialProgress, currentProgress: currentProgress, dupeFileOption: dupeFileOption)
+    }
+  }
+
+  enum SortError: String, LocalizedError {
+    case directoryDoesntExist = "Directory Doesn't Exist"
+    case operationCancelled = "Operation Cancelled"
+
+    var errorDescription: String? {
+      rawValue
+    }
+  }
+
+  struct DupeFileOptions {
+    let option: DupeFileOption
+    let applyToAll: Bool
+  }
+
+  enum DupeFileOption: String, CaseIterable {
+    case keepBoth = "Keep Both"
+    case skip = "Skip"
+    case replace = "Replace"
+  }
+
+  func handleDuplicate(
+    duplicateFile: DuplicateFile,
+    options: ImageSortOptions,
+    initialProgress: Progress,
+    currentProgress: (Progress) -> Void,
+    dupeFileOption: DupeFileOption
+  ) async throws {
+    let progress = initialProgress
+
+    let (file, destination) = (duplicateFile.source, duplicateFile.destination)
+
+    switch dupeFileOption {
+    case .keepBoth:
+      try keepBoth()
+    case .skip:
+      break
+    case .replace:
+      do {
+        try await destination.moveToTrash()
+        if options.copy {
+          try FileManager.default.copyItem(at: file, to: destination)
+        } else {
+          try FileManager.default.moveItem(at: file, to: destination)
+        }
+
+      } catch {
+        throw error
+      }
+    }
+
+    duplicateFiles.remove(duplicateFile)
+
+    progress.completedUnitCount = progress.completedUnitCount + 1
+
+    currentProgress(progress)
+
+    func keepBoth() throws {
+      guard let imageDate = if file.pathExtension == "tiff" {
+        getTiffDate(url: file)
+      } else if isVideoFileExtension(file.pathExtension) {
+        getVideoDate(url: file)
+      } else {
+        getImageDate(url: file)
+      } else { return }
+
+      var n = 1
+      while true {
+        let destination = destination.appendingToFileName(" (\(n))")
+        do {
+          if options.copy {
+            try FileManager.default.copyItem(at: file, to: destination)
+          } else {
+            try FileManager.default.moveItem(at: file, to: destination)
+          }
+          let attributes: [FileAttributeKey: Any] = [
+            .creationDate: options.creationDateExif ? imageDate : Date(),
+            .modificationDate: options.modificationDateExif ? imageDate : Date()
+          ]
+          try FileManager.default.setAttributes(attributes, ofItemAtPath: destination.path)
+
+          break
+
+        } catch CocoaError.fileWriteFileExists {
+          n += 1
+          continue
+        } catch {
+          throw error
+        }
+      }
+    }
+  }
+
+}
