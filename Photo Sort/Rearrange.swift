@@ -117,14 +117,14 @@ enum DupeFileOption: String, CaseIterable {
   case replace = "Replace"
 }
 
-class ImageSorter {
+actor ImageSorter {
   private var processedDates = [String: Int]()
   private var duplicateFiles = Set<DuplicateFile>()
   private var destinationFileMap = [URL: URL]()
 
   private var progress = Progress()
 
-  private let currentProgress: (Progress) -> Void
+  @MainActor private let currentProgress: @Sendable (Progress) -> Void
   private let handleDuplicates: (ImageSorter) -> Void
 
   private let inputDir: URL
@@ -136,7 +136,7 @@ class ImageSorter {
     inputDir: URL,
     outputDir: URL,
     options: ImageSortOptions,
-    currentProgress: @escaping (Progress) -> Void,
+    currentProgress: @Sendable @escaping (Progress) -> Void,
     handleDuplicates: @escaping (ImageSorter) -> Void
   ) {
     self.inputDir = inputDir
@@ -167,14 +167,12 @@ class ImageSorter {
 
       self.progress = Progress(totalUnitCount: Int64(count))
 
-      currentProgress(progress)
-
-      var isCancelled = false
-      progress.cancellationHandler = {
-        isCancelled = true
+      Task { @MainActor in
+        await currentProgress(progress)
       }
+
       for file in allFiles {
-        if isCancelled {
+        if progress.isCancelled {
           throw SortError.operationCancelled
         }
         let fileURL = inputDir.appendingPathComponent(file)
@@ -184,7 +182,9 @@ class ImageSorter {
           if result {
             print(fileURL)
             progress.completedUnitCount = progress.completedUnitCount + 1
-            currentProgress(progress)
+            Task { @MainActor in
+              await currentProgress(progress)
+            }
           }
         } catch {
           throw error

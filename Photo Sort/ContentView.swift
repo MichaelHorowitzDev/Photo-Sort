@@ -12,6 +12,7 @@ enum TypesToSort: String, CaseIterable {
   case photos, videos, both
 }
 
+@MainActor
 private class ViewModel: ObservableObject {
   @Published var inputDir = "" {
     didSet {
@@ -40,7 +41,7 @@ private class ViewModel: ObservableObject {
 
   @Published var filesOpen = false
 
-  @Published var progress: Progress? {
+  @MainActor @Published var progress: Progress? {
     didSet {
       if progress?.fractionCompleted == 1 {
         DispatchQueue.main.async {
@@ -52,7 +53,7 @@ private class ViewModel: ObservableObject {
   }
   @Published var alertResult: AlertResult?
 
-  func sortPhotos() {
+  func sortPhotos() async {
     let input = URL(fileURLWithPath: self.inputDir)
     let output = URL(fileURLWithPath: self.outputDir)
 
@@ -72,18 +73,20 @@ private class ViewModel: ObservableObject {
     let imageSorter = ImageSorter(
       inputDir: input,
       outputDir: output,
-      options: options) { progress in
-        DispatchQueue.main.async {
+      options: options) { @Sendable progress in
+        Task { @MainActor in
           self.progress = progress
         }
-      } handleDuplicates: { imageSorter in
-        self.handleDuplicateFiles(imageSorter)
+      } handleDuplicates: { @Sendable imageSorter in
+        Task { @MainActor in
+          self.handleDuplicateFiles(imageSorter)
+        }
       }
 
     do {
-      try imageSorter.sortImages()
+      try await imageSorter.sortImages()
     } catch {
-      DispatchQueue.main.async {
+      await MainActor.run {
         self.progress = nil
         self.alertResult = AlertResult(error: error)
       }
@@ -91,7 +94,7 @@ private class ViewModel: ObservableObject {
   }
 
   func handleDuplicateFiles(_ imageSorter: ImageSorter) {
-    DispatchQueue.main.async {
+    Task {
       let width = 400
       let height = 410
       let panel = NSPanel(
@@ -107,9 +110,8 @@ private class ViewModel: ObservableObject {
         let panel: NSPanel
         let imageSorter: ImageSorter
 
-//        private var onFinished: () -> Void
-
         @State private var duplicateFile: DuplicateFile
+        @State private var duplicateCount: Int = 0
 
         init(panel: NSPanel, imageSorter: ImageSorter, duplicateFile: DuplicateFile) {
           self.panel = panel
@@ -145,7 +147,7 @@ private class ViewModel: ObservableObject {
             .padding()
 
             HStack {
-              if imageSorter.getDuplicateCount() > 1 {
+              if self.duplicateCount > 1 {
                 Toggle("Apply to all", isOn: $applyToAll)
               }
               Spacer()
@@ -155,13 +157,13 @@ private class ViewModel: ObservableObject {
                     DispatchQueue.main.async {
                       self.panel.close()
                     }
-                    Task {
+                    Task.detached {
                       try? await imageSorter.handleDuplicates(dupeFileOption: option)
                     }
                   } else {
                     Task {
                       try? await imageSorter.handleDuplicate(duplicateFile: self.duplicateFile, dupeFileOption: option)
-                      if let duplicate = imageSorter.getDuplicate() {
+                      if let duplicate = await imageSorter.getDuplicate() {
                         self.duplicateFile = duplicate
                       } else {
                         self.panel.close()
@@ -172,11 +174,21 @@ private class ViewModel: ObservableObject {
               }
             }
             .padding(.horizontal)
+            .onChange(of: duplicateFile) { newValue in
+              Task {
+                self.duplicateCount = await imageSorter.getDuplicateCount()
+              }
+            }
+            .onAppear {
+              Task {
+                self.duplicateCount = await imageSorter.getDuplicateCount()
+              }
+            }
           }
         }
       }
 
-      guard let duplicateFile = imageSorter.getDuplicate() else { return }
+      guard let duplicateFile = await imageSorter.getDuplicate() else { return }
 
       let contentView = NSHostingView(
         rootView:
@@ -204,7 +216,7 @@ private class ViewModel: ObservableObject {
     }
   }
 
-  func openFolderPath(result: @escaping (URL?) -> Void) {
+  @MainActor func openFolderPath(result: @escaping (URL?) -> Void) {
     let panel = NSOpenPanel()
     panel.canChooseFiles = false
     panel.canChooseDirectories = true
@@ -219,7 +231,7 @@ private class ViewModel: ObservableObject {
     }
   }
 
-  func setInputDir() {
+  @MainActor func setInputDir() {
     openFolderPath { url in
       if let url {
         self.inputDir = url.path
@@ -227,7 +239,7 @@ private class ViewModel: ObservableObject {
     }
   }
 
-  func setOutputDir() {
+  @MainActor func setOutputDir() {
     openFolderPath { url in
       if let url {
         self.outputDir = url.path
@@ -337,7 +349,9 @@ struct ContentView: View {
               }
             } else {
               Button {
-                viewModel.sortPhotos()
+                Task {
+                  await viewModel.sortPhotos()
+                }
               } label: {
                 Text("Sort Photos")
               }
