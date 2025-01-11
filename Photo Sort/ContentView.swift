@@ -40,59 +40,57 @@ private class ViewModel: ObservableObject {
 
   @Published var filesOpen = false
 
-  @Published var progress: Progress?
+  @Published var progress: Progress? {
+    didSet {
+      if progress?.fractionCompleted == 1 {
+        DispatchQueue.main.async {
+          self.progress = nil
+          self.alertResult = AlertResult(result: "Success Sorting Photos")
+        }
+      }
+    }
+  }
   @Published var alertResult: AlertResult?
 
   func sortPhotos() {
     let input = URL(fileURLWithPath: self.inputDir)
     let output = URL(fileURLWithPath: self.outputDir)
-    DispatchQueue.global(qos: .userInitiated).async {
-      do {
-        let options = ImageSortOptions(
-          year: self.year,
-          month: self.month,
-          monthFormat: self.monthFormat,
-          week: false,
-          day: self.day,
-          copy: self.copyPhotos,
-          creationDateExif: self.creationDateExif,
-          modificationDateExif: self.modificationDateExif,
-          renamePhotosToExif: self.rename,
-          renamePhotosFormat: self.renameFormat,
-          typesToSort: self.typesToSort)
 
-        let semaphore = DispatchSemaphore(value: 0)
+    let options = ImageSortOptions(
+      year: self.year,
+      month: self.month,
+      monthFormat: self.monthFormat,
+      week: false,
+      day: self.day,
+      copy: self.copyPhotos,
+      creationDateExif: self.creationDateExif,
+      modificationDateExif: self.modificationDateExif,
+      renamePhotosToExif: self.rename,
+      renamePhotosFormat: self.renameFormat,
+      typesToSort: self.typesToSort)
 
-        try sortImages(
-          inputDir: input,
-          outputDir: output,
-          options: options
-        ) { progress in
-          DispatchQueue.main.async {
-            self.progress = progress
-          }
-        } duplicates: { duplicateFiles in
-          self.handleDuplicateFiles(sortOptions: options, duplicateFiles) {
-            semaphore.signal()
-          }
-        }
-
-        semaphore.wait()
-
+    let imageSorter = ImageSorter(
+      inputDir: input,
+      outputDir: output,
+      options: options) { progress in
         DispatchQueue.main.async {
-          self.progress = nil
-          self.alertResult = AlertResult(result: "Success Sorting Photos")
+          self.progress = progress
         }
-      } catch {
-        DispatchQueue.main.async {
-          self.progress = nil
-          self.alertResult = AlertResult(error: error)
-        }
+      } handleDuplicates: { imageSorter in
+        self.handleDuplicateFiles(imageSorter)
+      }
+
+    do {
+      try imageSorter.sortImages()
+    } catch {
+      DispatchQueue.main.async {
+        self.progress = nil
+        self.alertResult = AlertResult(error: error)
       }
     }
   }
 
-  func handleDuplicateFiles(sortOptions: ImageSortOptions, _ duplicateFiles: Set<DuplicateFile>, onFinished: @escaping () -> Void) {
+  func handleDuplicateFiles(_ imageSorter: ImageSorter) {
     DispatchQueue.main.async {
       let width = 400
       let height = 410
@@ -106,30 +104,17 @@ private class ViewModel: ObservableObject {
       panel.title = "Duplicate File Detected"
 
       struct MyView: View {
-        @State private var duplicateFiles: Set<DuplicateFile>
         let panel: NSPanel
-        let sortOptions: ImageSortOptions
-        @State private var initialProgress: Progress
+        let imageSorter: ImageSorter
 
-        private var progress: (Progress) -> Void
-        private var onFinished: () -> Void
+//        private var onFinished: () -> Void
 
         @State private var duplicateFile: DuplicateFile
 
-        init(duplicateFiles: Set<DuplicateFile>,
-             panel: NSPanel,
-             sortOptions: ImageSortOptions,
-             initialProgress: Progress,
-             progress: @escaping (Progress) -> Void,
-             onFinished: @escaping () -> Void
-        ) {
-          self.duplicateFiles = duplicateFiles
+        init(panel: NSPanel, imageSorter: ImageSorter, duplicateFile: DuplicateFile) {
           self.panel = panel
-          self.sortOptions = sortOptions
-          self.initialProgress = initialProgress
-          self.progress = progress
-          self.onFinished = onFinished
-          self._duplicateFile = State(wrappedValue: duplicateFiles.randomElement()!)
+          self.imageSorter = imageSorter
+          self._duplicateFile = State(wrappedValue: duplicateFile)
         }
 
         @State var applyToAll = false
@@ -160,7 +145,7 @@ private class ViewModel: ObservableObject {
             .padding()
 
             HStack {
-              if !duplicateFiles.isEmpty {
+              if imageSorter.getDuplicateCount() > 1 {
                 Toggle("Apply to all", isOn: $applyToAll)
               }
               Spacer()
@@ -170,47 +155,18 @@ private class ViewModel: ObservableObject {
                     DispatchQueue.main.async {
                       self.panel.close()
                     }
-                    DispatchQueue.global(qos: .userInitiated).async {
-                      try! Photo_Reorganizer.handleDuplicates(
-                        options: self.sortOptions,
-                        initialProgress: self.initialProgress,
-                        currentProgress: { progress in
-                          print("progress change")
-                          self.progress(progress)
-                          DispatchQueue.main.async {
-                            self.initialProgress = progress
-                            if progress.fractionCompleted == 1 {
-                              self.onFinished()
-                            }
-                          }
-                        },
-                        dupeFileOption: option
-                      )
+                    Task {
+                      try? await imageSorter.handleDuplicates(dupeFileOption: option)
                     }
                   } else {
-                    DispatchQueue.global().async {
-                      try! Photo_Reorganizer.handleDuplicate(
-                        duplicateFile: self.duplicateFile,
-                        options: self.sortOptions,
-                        initialProgress: self.initialProgress,
-                        currentProgress: { progress in
-                          self.progress(progress)
-                          DispatchQueue.main.async {
-                            self.initialProgress = progress
-                            if progress.fractionCompleted == 1 {
-                              self.onFinished()
-                            }
-                          }
-                        },
-                        dupeFileOption: option
-                      )
+                    Task {
+                      try? await imageSorter.handleDuplicate(duplicateFile: self.duplicateFile, dupeFileOption: option)
+                      if let duplicate = imageSorter.getDuplicate() {
+                        self.duplicateFile = duplicate
+                      } else {
+                        self.panel.close()
+                      }
                     }
-                  }
-                  duplicateFiles.remove(duplicateFile)
-                  if duplicateFiles.isEmpty {
-                    self.panel.close()
-                  } else {
-                    duplicateFile = duplicateFiles.randomElement()!
                   }
                 }
               }
@@ -220,14 +176,11 @@ private class ViewModel: ObservableObject {
         }
       }
 
+      guard let duplicateFile = imageSorter.getDuplicate() else { return }
+
       let contentView = NSHostingView(
         rootView:
-          MyView(duplicateFiles: duplicateFiles, panel: panel, sortOptions: sortOptions, initialProgress: self.progress ?? Progress()) { progress in
-            print(progress)
-            DispatchQueue.main.async {
-              self.progress = progress
-            }
-          } onFinished: { onFinished() }
+          MyView(panel: panel, imageSorter: imageSorter, duplicateFile: duplicateFile)
           .frame(width: Double(width), height: Double(height))
           .padding(.top)
       )
