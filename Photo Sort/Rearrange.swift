@@ -209,15 +209,6 @@ actor ImageSorter {
     }
   }
 
-  enum SortError: String, LocalizedError {
-    case directoryDoesntExist = "Directory Doesn't Exist"
-    case operationCancelled = "Operation Cancelled"
-
-    var errorDescription: String? {
-      rawValue
-    }
-  }
-
   struct DupeFileOptions {
     let option: DupeFileOption
     let applyToAll: Bool
