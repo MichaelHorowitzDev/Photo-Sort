@@ -178,7 +178,7 @@ actor ImageSorter {
         return
       }
 
-      self.progress = Progress(totalUnitCount: Int64(count))
+      self.progress.totalUnitCount = Int64(count)
 
       await updateProgress(progress)
 
