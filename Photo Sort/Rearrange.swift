@@ -8,25 +8,24 @@
 import Photos
 import EXIF
 
-private func getImageDate(url: URL) -> Date? {
-  ImageMetadata(imageURL: url)?.exif?.dateTimeOriginal
-}
-
 private func getVideoDate(url: URL) -> Date? {
   let asset = AVAsset(url: url)
   let metadata = asset.metadata
 
-  return metadata.first(where: { $0.commonKey == .commonKeyCreationDate })?.dateValue
+  return {
+    metadata.first(where: { $0.commonKey == .commonKeyCreationDate })?.dateValue ??
+    (try? FileManager.default.attributesOfItem(atPath: url.path) as [FileAttributeKey: Any])?[.creationDate] as? Date
+  }()
 }
 
-private func getTiffDate(url: URL) -> Date? {
+private func getImageDate(url: URL) -> Date? {
   let metadata = ImageMetadata(imageURL: url)
 
-  let tiffDate = metadata?.tiff?.dateTime
-  let exifDate = metadata?.exif?.dateTimeOriginal
-  let fileCreationDate = (try? FileManager.default.attributesOfItem(atPath: url.path) as [FileAttributeKey: Any])?[.creationDate] as? Date
-
-  return tiffDate ?? exifDate ?? fileCreationDate
+  return {
+    metadata?.tiff?.dateTime ??
+    metadata?.exif?.dateTimeOriginal ??
+    (try? FileManager.default.attributesOfItem(atPath: url.path) as [FileAttributeKey: Any])?[.creationDate] as? Date
+  }()
 }
 
 private func getFiles(url: URL) -> FileManager.DirectoryEnumerator? {
@@ -38,14 +37,12 @@ struct DuplicateFile: Hashable {
   let destination: URL
 }
 
-func isVideoFileExtension(_ fileExtension: String) -> Bool {
-    let videoExtensions: Set<String> = ["mp4", "mov", "avi", "mkv", "flv", "wmv", "webm", "mpeg", "mpg", "m4v", "3gp", "3g2", "m2ts"]
-    return videoExtensions.contains(fileExtension.lowercased())
+func isVideoFile(_ url: URL) -> Bool {
+  UTType(filenameExtension: url.pathExtension)!.conforms(to: UTType.audiovisualContent)
 }
 
-func isExifImageFileExtension(_ fileExtension: String) -> Bool {
-    let exifImageExtensions: Set<String> = ["jpg", "jpeg", "tiff", "tif", "heif", "heic", "dng", "raw"]
-    return exifImageExtensions.contains(fileExtension.lowercased())
+func isImageFile(_ url: URL) -> Bool {
+  UTType(filenameExtension: url.pathExtension)!.conforms(to: UTType.image)
 }
 
 enum MonthFormat: String, CaseIterable {
@@ -165,8 +162,8 @@ actor ImageSorter {
         .filter { str in
           let file = inputDir.appendingPathComponent(str)
 
-          let isPhoto = isExifImageFileExtension(file.pathExtension)
-          let isVideo = isVideoFileExtension(file.pathExtension)
+          let isPhoto = isImageFile(file)
+          let isVideo = isVideoFile(file)
 
           return options.typesToSort == .photos && isPhoto || options.typesToSort == .videos && isVideo || options.typesToSort == .both && (isPhoto || isVideo)
         }
@@ -258,13 +255,7 @@ actor ImageSorter {
     await updateProgress(progress)
 
     func keepBoth() async {
-      guard let imageDate = if file.pathExtension == "tiff" {
-        getTiffDate(url: file)
-      } else if isVideoFileExtension(file.pathExtension) {
-        getVideoDate(url: file)
-      } else {
-        getImageDate(url: file)
-      } else { return }
+      guard let fileDate = isImageFile(file) ? getImageDate(url: file) : getVideoDate(url: file) else { return }
 
       var n = 1
       while true {
@@ -276,8 +267,8 @@ actor ImageSorter {
             try FileManager.default.moveItem(at: file, to: destination)
           }
           let attributes: [FileAttributeKey: Any] = [
-            .creationDate: options.creationDateExif ? imageDate : Date(),
-            .modificationDate: options.modificationDateExif ? imageDate : Date()
+            .creationDate: options.creationDateExif ? fileDate : Date(),
+            .modificationDate: options.modificationDateExif ? fileDate : Date()
           ]
           try FileManager.default.setAttributes(attributes, ofItemAtPath: destination.path)
 
@@ -295,21 +286,16 @@ actor ImageSorter {
   }
 
   private func arrangeImage(file: URL, outputDir: URL, options: ImageSortOptions) throws -> Bool {
-    if options.typesToSort == .videos && isExifImageFileExtension(file.pathExtension) || options.typesToSort == .photos && isVideoFileExtension(file.pathExtension) {
+    if options.typesToSort == .videos && isImageFile(file) || options.typesToSort == .photos && isVideoFile(file) {
       return true
     }
-    guard let imageDate = if file.pathExtension == "tiff" {
-      getTiffDate(url: file)
-    } else if isVideoFileExtension(file.pathExtension) {
-      getVideoDate(url: file)
-    } else {
-      getImageDate(url: file)
-    } else { return true }
+
+    guard let fileDate = isImageFile(file) ? getImageDate(url: file) : getVideoDate(url: file) else { return true }
 
     let pathTypes = [
-      options.year ? String(imageDate.year) : "",
-      options.month ? imageDate.month(from: options.monthFormat) : "",
-      options.day ? String(imageDate.day) : ""
+      options.year ? String(fileDate.year) : "",
+      options.month ? fileDate.month(from: options.monthFormat) : "",
+      options.day ? String(fileDate.day) : ""
     ].filter { !$0.isEmpty }
 
     let outputURL = pathTypes.reduce(outputDir) { url, component in
@@ -326,7 +312,7 @@ actor ImageSorter {
 
     let url: URL
     if options.renamePhotosToExif {
-      let date = imageDate.formatted(format: options.renamePhotosFormat)
+      let date = fileDate.formatted(format: options.renamePhotosFormat)
       processedDates[date, default: 0] += 1
       let number = processedDates[date]!
       let formattedNumber = NumberFormatterValue(number)
@@ -352,8 +338,8 @@ actor ImageSorter {
         try FileManager.default.moveItem(at: file, to: url)
       }
       let attributes: [FileAttributeKey: Any] = [
-        .creationDate: options.creationDateExif ? imageDate : Date(),
-        .modificationDate: options.modificationDateExif ? imageDate : Date()
+        .creationDate: options.creationDateExif ? fileDate : Date(),
+        .modificationDate: options.modificationDateExif ? fileDate : Date()
       ]
       try FileManager.default.setAttributes(attributes, ofItemAtPath: url.path)
 
