@@ -28,6 +28,10 @@ private func getImageDate(url: URL) -> Date? {
   }()
 }
 
+private func getFileDate(url: URL) -> Date? {
+  isImageFile(url) ? getImageDate(url: url) : getVideoDate(url: url)
+}
+
 private func getFiles(url: URL) -> FileManager.DirectoryEnumerator? {
   FileManager.default.enumerator(atPath: url.path)
 }
@@ -255,7 +259,7 @@ actor ImageSorter {
     await updateProgress(progress)
 
     func keepBoth() async {
-      guard let fileDate = isImageFile(file) ? getImageDate(url: file) : getVideoDate(url: file) else { return }
+      guard let fileDate = getFileDate(url: file) else { return }
 
       var n = 1
       while true {
@@ -290,7 +294,7 @@ actor ImageSorter {
       return true
     }
 
-    guard let fileDate = isImageFile(file) ? getImageDate(url: file) : getVideoDate(url: file) else { return true }
+    guard let fileDate = getFileDate(url: file) else { return true }
 
     let pathTypes = [
       options.year ? String(fileDate.year) : "",
