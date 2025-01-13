@@ -407,7 +407,7 @@ struct ContentView: View {
             .padding()
             Spacer()
             Button("Support") {
-              let service = NSSharingService(named: NSSharingService.Name.composeEmail)
+              let service = NSSharingService(named: .composeEmail)
               service?.recipients = ["email@michaelhorowitz.dev"]
               service?.subject = "Photo Reorganizer Support"
               let version = ProcessInfo.processInfo.operatingSystemVersionString
