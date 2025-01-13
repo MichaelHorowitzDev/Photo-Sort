@@ -42,11 +42,11 @@ struct DuplicateFile: Hashable {
 }
 
 func isVideoFile(_ url: URL) -> Bool {
-  UTType(filenameExtension: url.pathExtension)!.conforms(to: UTType.audiovisualContent)
+  UTType(filenameExtension: url.pathExtension)?.conforms(to: UTType.audiovisualContent) ?? false
 }
 
 func isImageFile(_ url: URL) -> Bool {
-  UTType(filenameExtension: url.pathExtension)!.conforms(to: UTType.image)
+  UTType(filenameExtension: url.pathExtension)?.conforms(to: UTType.image) ?? false
 }
 
 enum MonthFormat: String, CaseIterable {
