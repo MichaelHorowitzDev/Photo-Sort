@@ -33,11 +33,6 @@ private func getVideoDate(url: URL) -> Date? {
 private func getTiffDate(url: URL) -> Date? {
   let metadata = ImageMetadata(imageURL: url)
 
-  if let attributes = try? FileManager.default.attributesOfItem(atPath: url.path) as [FileAttributeKey: Any],
-      let creationDate = attributes[FileAttributeKey.creationDate] as? Date {
-      print(creationDate)
-      }
-
   return metadata?.tiff?.dateTime ?? metadata?.exif?.dateTime ?? (try? FileManager.default.attributesOfItem(atPath: url.path) as [FileAttributeKey: Any])?[FileAttributeKey.creationDate] as? Date
 }
 
@@ -176,8 +171,6 @@ actor ImageSorter {
         .filter { str in
           let file = inputDir.appendingPathComponent(str)
 
-          print(file.pathExtension)
-
           let isPhoto = isExifImageFileExtension(file.pathExtension)
           let isVideo = isVideoFileExtension(file.pathExtension)
 
@@ -197,9 +190,7 @@ actor ImageSorter {
         let fileURL = inputDir.appendingPathComponent(file)
         do {
           let result = try arrangeImage(file: fileURL, outputDir: outputDir, options: options)
-          print(progress.completedUnitCount)
           if result {
-            print(fileURL)
             progress.completedUnitCount = progress.completedUnitCount + 1
             await updateProgress(progress)
           }
