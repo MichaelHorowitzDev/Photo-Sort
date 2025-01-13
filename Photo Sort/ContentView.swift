@@ -37,7 +37,7 @@ private class ViewModel: ObservableObject {
   @AppStorage("modificationDateExif") var modificationDateExif = true
   @AppStorage("rename") var rename = false
   @AppStorage("renameFormat") var renameFormat = "yyyy-MM-dd"
-  @AppStorage("typesToSort") var typesToSort = TypesToSort.both
+  @AppStorage("typesToSort") var typesToSort: TypesToSort = .both
 
   @Published var filesOpen = false
 
