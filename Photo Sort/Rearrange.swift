@@ -189,7 +189,7 @@ actor ImageSorter {
         }
         let fileURL = inputDir.appendingPathComponent(file)
         do {
-          let result = try arrangeImage(file: fileURL, outputDir: outputDir, options: options)
+          let result = try arrangeImage(sourceURL: fileURL, outputDir: outputDir, options: options)
           if result {
             progress.completedUnitCount = progress.completedUnitCount + 1
             await updateProgress(progress)
@@ -289,12 +289,12 @@ actor ImageSorter {
     }
   }
 
-  private func arrangeImage(file: URL, outputDir: URL, options: ImageSortOptions) throws -> Bool {
-    if options.typesToSort == .videos && isImageFile(file) || options.typesToSort == .photos && isVideoFile(file) {
+  private func arrangeImage(sourceURL: URL, outputDir: URL, options: ImageSortOptions) throws -> Bool {
+    if options.typesToSort == .videos && isImageFile(sourceURL) || options.typesToSort == .photos && isVideoFile(sourceURL) {
       return true
     }
 
-    guard let fileDate = getFileDate(for: file) else { return true }
+    guard let fileDate = getFileDate(for: sourceURL) else { return true }
 
     let pathTypes = [
       options.year ? String(fileDate.year) : "",
@@ -307,10 +307,10 @@ actor ImageSorter {
     }
 
     let originalDestinationURL: URL
-    originalDestinationURL = outputURL.appendingPathComponent(file.lastPathComponent)
+    originalDestinationURL = outputURL.appendingPathComponent(sourceURL.lastPathComponent)
 
     if let url = destinationFileMap[originalDestinationURL] {
-      duplicateFiles.insert(DuplicateFile(source: file, destination: url))
+      duplicateFiles.insert(DuplicateFile(source: url, destination: url))
       return false
     }
 
@@ -323,12 +323,12 @@ actor ImageSorter {
         .minimumIntegerDigits(3)
         .string()!
       var path = date + "_\(formattedNumber)"
-      if !file.pathExtension.isEmpty {
-        path.append("." + file.pathExtension)
+      if !sourceURL.pathExtension.isEmpty {
+        path.append("." + sourceURL.pathExtension)
       }
       url = outputURL.appendingPathComponent(path)
     } else {
-      url = outputURL.appendingPathComponent(file.lastPathComponent)
+      url = outputURL.appendingPathComponent(sourceURL.lastPathComponent)
     }
 
     destinationFileMap[originalDestinationURL] = url
@@ -337,9 +337,9 @@ actor ImageSorter {
       try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
 
       if options.copy {
-        try FileManager.default.copyItem(at: file, to: url)
+        try FileManager.default.copyItem(at: sourceURL, to: url)
       } else {
-        try FileManager.default.moveItem(at: file, to: url)
+        try FileManager.default.moveItem(at: sourceURL, to: url)
       }
       let attributes: [FileAttributeKey: Any] = [
         .creationDate: options.creationDateExif ? fileDate : Date(),
@@ -348,7 +348,7 @@ actor ImageSorter {
       try FileManager.default.setAttributes(attributes, ofItemAtPath: url.path)
 
     } catch CocoaError.fileWriteFileExists {
-      duplicateFiles.insert(DuplicateFile(source: file, destination: url))
+      duplicateFiles.insert(DuplicateFile(source: sourceURL, destination: url))
       return false
     } catch {
       throw error
