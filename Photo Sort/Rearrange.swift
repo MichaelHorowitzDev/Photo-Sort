@@ -9,18 +9,7 @@ import Photos
 import EXIF
 
 private func getImageDate(url: URL) -> Date? {
-  guard let imageSource = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
-  let imageProperties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil)
-  let dateFormatter = DateFormatter()
-  dateFormatter.dateFormat = "yyyy:MM:dd HH:mm:ss"
-  if let dict = imageProperties as? [String: Any],
-     let exif = dict["{Exif}"] as? [String: Any],
-     let dateString = exif["DateTimeOriginal"] as? String,
-     let date = dateFormatter.date(from: dateString) {
-    return date
-  } else {
-    return nil
-  }
+  ImageMetadata(imageURL: url)?.exif?.dateTimeOriginal
 }
 
 private func getVideoDate(url: URL) -> Date? {
