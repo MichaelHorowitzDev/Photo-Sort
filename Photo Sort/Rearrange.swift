@@ -8,7 +8,7 @@
 import Photos
 import EXIF
 
-private func getVideoDate(url: URL) -> Date? {
+private func getVideoDate(for url: URL) -> Date? {
   let asset = AVAsset(url: url)
   let metadata = asset.metadata
 
@@ -18,7 +18,7 @@ private func getVideoDate(url: URL) -> Date? {
   }()
 }
 
-private func getImageDate(url: URL) -> Date? {
+private func getImageDate(for url: URL) -> Date? {
   let metadata = ImageMetadata(imageURL: url)
 
   return {
@@ -28,11 +28,11 @@ private func getImageDate(url: URL) -> Date? {
   }()
 }
 
-private func getFileDate(url: URL) -> Date? {
-  isImageFile(url) ? getImageDate(url: url) : getVideoDate(url: url)
+private func getFileDate(for url: URL) -> Date? {
+  isImageFile(url) ? getImageDate(for: url) : getVideoDate(for: url)
 }
 
-private func getFiles(url: URL) -> FileManager.DirectoryEnumerator? {
+private func getFiles(for url: URL) -> FileManager.DirectoryEnumerator? {
   FileManager.default.enumerator(atPath: url.path)
 }
 
@@ -160,7 +160,7 @@ actor ImageSorter {
     processedDates.removeAll()
     duplicateFiles.removeAll()
     destinationFileMap.removeAll()
-    if let enumerator = getFiles(url: inputDir) {
+    if let enumerator = getFiles(for: inputDir) {
       let allFiles = enumerator.allObjects
         .compactMap { $0 as? String }
         .filter { str in
@@ -259,7 +259,7 @@ actor ImageSorter {
     await updateProgress(progress)
 
     func keepBoth() async {
-      guard let fileDate = getFileDate(url: file) else { return }
+      guard let fileDate = getFileDate(for: file) else { return }
 
       var n = 1
       while true {
@@ -294,7 +294,7 @@ actor ImageSorter {
       return true
     }
 
-    guard let fileDate = getFileDate(url: file) else { return true }
+    guard let fileDate = getFileDate(for: file) else { return true }
 
     let pathTypes = [
       options.year ? String(fileDate.year) : "",
