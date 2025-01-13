@@ -81,16 +81,14 @@ private class ViewModel: ObservableObject {
         Task { @MainActor in
           self.handleDuplicateFiles(imageSorter)
         }
+      } handleError: { @Sendable error in
+        Task { @MainActor in
+          self.progress = nil
+          self.alertResult = AlertResult(error: error)
+        }
       }
 
-    do {
-      try await imageSorter.sortImages()
-    } catch {
-      await MainActor.run {
-        self.progress = nil
-        self.alertResult = AlertResult(error: error)
-      }
-    }
+    await imageSorter.sortImages()
   }
 
   func handleDuplicateFiles(_ imageSorter: ImageSorter) {
@@ -131,17 +129,37 @@ private class ViewModel: ObservableObject {
             HStack(spacing: 10) {
               VStack {
                 Text("Source")
-                Image(nsImage: NSImage(contentsOf: duplicateFile.source)!)
-                  .resizable()
-                  .aspectRatio(contentMode: .fit)
-                  .frame(width: 180, height: 240)
+
+                if let image = NSImage(contentsOf: duplicateFile.source) {
+                  Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 180, height: 240)
+                } else {
+                  Image(systemName: "xmark.circle")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .foregroundColor(.red)
+                    .font(.title2)
+                    .frame(width: 180, height: 240)
+                }
               }
               VStack {
                 Text("Desination")
-                Image(nsImage: NSImage(contentsOf: duplicateFile.destination)!)
-                  .resizable()
-                  .aspectRatio(contentMode: .fit)
-                  .frame(width: 180, height: 240)
+
+                if let image = NSImage(contentsOf: duplicateFile.destination) {
+                  Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 180, height: 240)
+                } else {
+                  Image(systemName: "xmark.circle")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .foregroundColor(.red)
+                    .font(.title2)
+                    .frame(width: 180, height: 240)
+                }
               }
             }
             .padding()
@@ -158,11 +176,11 @@ private class ViewModel: ObservableObject {
                       self.panel.close()
                     }
                     Task.detached {
-                      try? await imageSorter.handleDuplicates(dupeFileOption: option)
+                      await imageSorter.handleDuplicates(dupeFileOption: option)
                     }
                   } else {
                     Task {
-                      try? await imageSorter.handleDuplicate(duplicateFile: self.duplicateFile, dupeFileOption: option)
+                      await imageSorter.handleDuplicate(duplicateFile: self.duplicateFile, dupeFileOption: option)
                       if let duplicate = await imageSorter.getDuplicate() {
                         self.duplicateFile = duplicate
                       } else {
@@ -343,7 +361,9 @@ struct ContentView: View {
           Group {
             if let progress = viewModel.progress {
               Button {
-                progress.cancel()
+                Task { @MainActor in
+                  progress.cancel()
+                }
               } label: {
                 Text("Cancel")
               }

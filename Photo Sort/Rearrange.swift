@@ -126,9 +126,12 @@ actor ImageSorter {
 
   @MainActor private let currentProgress: @Sendable (Progress) -> Void
   private let handleDuplicates: (ImageSorter) -> Void
+  private let handleError: (Error) -> Void
 
   private let inputDir: URL
   private let outputDir: URL
+
+  private var canUpdateProgress = true
 
   private let options: ImageSortOptions
 
@@ -137,16 +140,33 @@ actor ImageSorter {
     outputDir: URL,
     options: ImageSortOptions,
     currentProgress: @Sendable @escaping (Progress) -> Void,
-    handleDuplicates: @escaping (ImageSorter) -> Void
+    handleDuplicates: @escaping (ImageSorter) -> Void,
+    handleError: @escaping (Error) -> Void
   ) {
     self.inputDir = inputDir
     self.outputDir = outputDir
     self.options = options
     self.currentProgress = currentProgress
     self.handleDuplicates = handleDuplicates
+    self.handleError = handleError
   }
 
-  func sortImages() throws {
+  func reportError(_ error: Error) async {
+    self.processedDates.removeAll()
+    self.duplicateFiles.removeAll()
+    self.destinationFileMap.removeAll()
+
+    handleError(error)
+    canUpdateProgress = false
+  }
+
+  func updateProgress(_ progress: Progress) async {
+    if canUpdateProgress {
+      currentProgress(progress)
+    }
+  }
+
+  func sortImages() async {
     processedDates.removeAll()
     duplicateFiles.removeAll()
     destinationFileMap.removeAll()
@@ -167,13 +187,12 @@ actor ImageSorter {
 
       self.progress = Progress(totalUnitCount: Int64(count))
 
-      Task { @MainActor in
-        await currentProgress(progress)
-      }
+      await updateProgress(progress)
 
       for file in allFiles {
         if progress.isCancelled {
-          throw SortError.operationCancelled
+          await reportError(SortError.operationCancelled)
+          return
         }
         let fileURL = inputDir.appendingPathComponent(file)
         do {
@@ -182,12 +201,11 @@ actor ImageSorter {
           if result {
             print(fileURL)
             progress.completedUnitCount = progress.completedUnitCount + 1
-            Task { @MainActor in
-              await currentProgress(progress)
-            }
+            await updateProgress(progress)
           }
         } catch {
-          throw error
+          await reportError(error)
+          return
         }
       }
 
@@ -196,13 +214,14 @@ actor ImageSorter {
       }
 
     } else {
-      throw SortError.directoryDoesntExist
+      await reportError(SortError.directoryDoesntExist)
+      return
     }
   }
 
-  func handleDuplicates(dupeFileOption: DupeFileOption) async throws {
+  func handleDuplicates(dupeFileOption: DupeFileOption) async {
     for duplicateFile in duplicateFiles {
-      try await handleDuplicate(duplicateFile: duplicateFile, dupeFileOption: dupeFileOption)
+      await handleDuplicate(duplicateFile: duplicateFile, dupeFileOption: dupeFileOption)
     }
   }
 
@@ -228,12 +247,12 @@ actor ImageSorter {
     duplicateFiles.count
   }
 
-  func handleDuplicate(duplicateFile: DuplicateFile, dupeFileOption: DupeFileOption) async throws {
+  func handleDuplicate(duplicateFile: DuplicateFile, dupeFileOption: DupeFileOption) async {
     let (file, destination) = (duplicateFile.source, duplicateFile.destination)
 
     switch dupeFileOption {
     case .keepBoth:
-      try keepBoth()
+      await keepBoth()
     case .skip:
       break
     case .replace:
@@ -246,7 +265,8 @@ actor ImageSorter {
         }
 
       } catch {
-        throw error
+        await reportError(error)
+        return
       }
     }
 
@@ -254,9 +274,9 @@ actor ImageSorter {
 
     progress.completedUnitCount = progress.completedUnitCount + 1
 
-    currentProgress(progress)
+    await updateProgress(progress)
 
-    func keepBoth() throws {
+    func keepBoth() async {
       guard let imageDate = if file.pathExtension == "tiff" {
         getTiffDate(url: file)
       } else if isVideoFileExtension(file.pathExtension) {
@@ -286,7 +306,8 @@ actor ImageSorter {
           n += 1
           continue
         } catch {
-          throw error
+          await reportError(error)
+          return
         }
       }
     }
