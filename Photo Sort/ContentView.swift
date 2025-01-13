@@ -47,11 +47,14 @@ private class ViewModel: ObservableObject {
         DispatchQueue.main.async {
           self.progress = nil
           self.alertResult = AlertResult(result: "Success Sorting Photos")
+          self.handlingDuplicates = false
         }
       }
     }
   }
   @Published var alertResult: AlertResult?
+
+  @Published var handlingDuplicates = false
 
   func sortPhotos() async {
     let input = URL(fileURLWithPath: self.inputDir)
@@ -79,7 +82,8 @@ private class ViewModel: ObservableObject {
         }
       } handleDuplicates: { @Sendable imageSorter in
         Task { @MainActor in
-          self.handleDuplicateFiles(imageSorter)
+          self.handlingDuplicates = true
+          await self.handleDuplicateFiles(imageSorter)
         }
       } handleError: { @Sendable error in
         Task { @MainActor in
@@ -91,147 +95,144 @@ private class ViewModel: ObservableObject {
     await imageSorter.sortImages()
   }
 
-  func handleDuplicateFiles(_ imageSorter: ImageSorter) {
-    Task {
-      let width = 400
-      let height = 410
-      let panel = NSPanel(
-        contentRect: NSRect(x: 0, y: 0, width: width, height: height),
-        styleMask: [.titled],
-        backing: .buffered,
-        defer: false
-      )
+  func handleDuplicateFiles(_ imageSorter: ImageSorter) async {
+    let width = 400
+    let height = 410
+    let panel = NSPanel(
+      contentRect: NSRect(x: 0, y: 0, width: width, height: height),
+      styleMask: [.titled],
+      backing: .buffered,
+      defer: false
+    )
 
-      panel.title = "Duplicate File Detected"
+    panel.title = "Duplicate File Detected"
 
-      struct MyView: View {
-        let panel: NSPanel
-        let imageSorter: ImageSorter
+    struct MyView: View {
+      let panel: NSPanel
+      let imageSorter: ImageSorter
 
-        @State private var duplicateFile: DuplicateFile
-        @State private var duplicateCount: Int = 0
+      @State private var duplicateFile: DuplicateFile
+      @State private var duplicateCount: Int = 0
 
-        init(panel: NSPanel, imageSorter: ImageSorter, duplicateFile: DuplicateFile) {
-          self.panel = panel
-          self.imageSorter = imageSorter
-          self._duplicateFile = State(wrappedValue: duplicateFile)
-        }
+      init(panel: NSPanel, imageSorter: ImageSorter, duplicateFile: DuplicateFile) {
+        self.panel = panel
+        self.imageSorter = imageSorter
+        self._duplicateFile = State(wrappedValue: duplicateFile)
+      }
 
-        @State var applyToAll = false
+      @State var applyToAll = false
 
-        var body: some View {
-          VStack {
-            Text("The file \"\(duplicateFile.source.lastPathComponent)\" already exists.")
-              .font(.headline)
-              .lineLimit(5)
-              .padding()
-
-            HStack(spacing: 10) {
-              VStack {
-                Text("Source")
-
-                if let image = NSImage(contentsOf: duplicateFile.source) {
-                  Image(nsImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 180, height: 240)
-                } else {
-                  Image(systemName: "xmark.circle")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .foregroundColor(.red)
-                    .font(.title2)
-                    .frame(width: 180, height: 240)
-                }
-              }
-              VStack {
-                Text("Desination")
-
-                if let image = NSImage(contentsOf: duplicateFile.destination) {
-                  Image(nsImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 180, height: 240)
-                } else {
-                  Image(systemName: "xmark.circle")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .foregroundColor(.red)
-                    .font(.title2)
-                    .frame(width: 180, height: 240)
-                }
-              }
-            }
+      var body: some View {
+        VStack {
+          Text("The file \"\(duplicateFile.source.lastPathComponent)\" already exists.")
+            .font(.headline)
+            .lineLimit(5)
             .padding()
 
-            HStack {
-              if self.duplicateCount > 1 {
-                Toggle("Apply to all", isOn: $applyToAll)
+          HStack(spacing: 10) {
+            VStack {
+              Text("Source")
+
+              if let image = NSImage(contentsOf: duplicateFile.source) {
+                Image(nsImage: image)
+                  .resizable()
+                  .aspectRatio(contentMode: .fit)
+                  .frame(width: 180, height: 240)
+              } else {
+                Image(systemName: "xmark.circle")
+                  .resizable()
+                  .aspectRatio(contentMode: .fit)
+                  .foregroundColor(.red)
+                  .font(.title2)
+                  .frame(width: 180, height: 240)
               }
-              Spacer()
-              ForEach(DupeFileOption.allCases, id: \.self) { option in
-                Button(option.rawValue) {
-                  if applyToAll {
-                    DispatchQueue.main.async {
+            }
+            VStack {
+              Text("Desination")
+
+              if let image = NSImage(contentsOf: duplicateFile.destination) {
+                Image(nsImage: image)
+                  .resizable()
+                  .aspectRatio(contentMode: .fit)
+                  .frame(width: 180, height: 240)
+              } else {
+                Image(systemName: "xmark.circle")
+                  .resizable()
+                  .aspectRatio(contentMode: .fit)
+                  .foregroundColor(.red)
+                  .font(.title2)
+                  .frame(width: 180, height: 240)
+              }
+            }
+          }
+          .padding()
+
+          HStack {
+            if self.duplicateCount > 1 {
+              Toggle("Apply to all", isOn: $applyToAll)
+            }
+            Spacer()
+            ForEach(DupeFileOption.allCases, id: \.self) { option in
+              Button(option.rawValue) {
+                if applyToAll {
+                  DispatchQueue.main.async {
+                    self.panel.close()
+                  }
+                  Task.detached {
+                    await imageSorter.handleDuplicates(dupeFileOption: option)
+                  }
+                } else {
+                  Task {
+                    await imageSorter.handleDuplicate(duplicateFile: self.duplicateFile, dupeFileOption: option)
+                    if let duplicate = await imageSorter.getDuplicate() {
+                      self.duplicateFile = duplicate
+                    } else {
                       self.panel.close()
-                    }
-                    Task.detached {
-                      await imageSorter.handleDuplicates(dupeFileOption: option)
-                    }
-                  } else {
-                    Task {
-                      await imageSorter.handleDuplicate(duplicateFile: self.duplicateFile, dupeFileOption: option)
-                      if let duplicate = await imageSorter.getDuplicate() {
-                        self.duplicateFile = duplicate
-                      } else {
-                        self.panel.close()
-                      }
                     }
                   }
                 }
               }
             }
-            .padding(.horizontal)
-            .onChange(of: duplicateFile) { newValue in
-              Task {
-                self.duplicateCount = await imageSorter.getDuplicateCount()
-              }
+          }
+          .padding(.horizontal)
+          .onChange(of: duplicateFile) { newValue in
+            Task {
+              self.duplicateCount = await imageSorter.getDuplicateCount()
             }
-            .onAppear {
-              Task {
-                self.duplicateCount = await imageSorter.getDuplicateCount()
-              }
+          }
+          .onAppear {
+            Task {
+              self.duplicateCount = await imageSorter.getDuplicateCount()
             }
           }
         }
       }
-
-      guard let duplicateFile = await imageSorter.getDuplicate() else { return }
-
-      let contentView = NSHostingView(
-        rootView:
-          MyView(panel: panel, imageSorter: imageSorter, duplicateFile: duplicateFile)
-          .frame(width: Double(width), height: Double(height))
-          .padding(.top)
-      )
-
-      panel.contentView = contentView
-
-      if let parentWindow = NSApplication.shared.keyWindow {
-        let parentFrame = parentWindow.frame
-        let panelSize = panel.frame.size
-
-        let centerX = parentFrame.origin.x + (parentFrame.size.width - panelSize.width) / 2
-        let centerY = parentFrame.origin.y + (parentFrame.size.height - panelSize.height) / 2
-
-        panel.setFrameOrigin(NSPoint(x: centerX, y: centerY))
-      } else {
-        panel.center()
-      }
-
-      panel.makeKeyAndOrderFront(nil)
-
     }
+
+    guard let duplicateFile = await imageSorter.getDuplicate() else { return }
+
+    let contentView = NSHostingView(
+      rootView:
+        MyView(panel: panel, imageSorter: imageSorter, duplicateFile: duplicateFile)
+        .frame(width: Double(width), height: Double(height))
+        .padding(.top)
+    )
+
+    panel.contentView = contentView
+
+    if let parentWindow = NSApplication.shared.keyWindow {
+      let parentFrame = parentWindow.frame
+      let panelSize = panel.frame.size
+
+      let centerX = parentFrame.origin.x + (parentFrame.size.width - panelSize.width) / 2
+      let centerY = parentFrame.origin.y + (parentFrame.size.height - panelSize.height) / 2
+
+      panel.setFrameOrigin(NSPoint(x: centerX, y: centerY))
+    } else {
+      panel.center()
+    }
+
+    panel.makeKeyAndOrderFront(nil)
   }
 
   @MainActor func openFolderPath(result: @escaping (URL?) -> Void) {
@@ -360,12 +361,14 @@ struct ContentView: View {
           }
           Group {
             if let progress = viewModel.progress {
-              Button {
-                Task { @MainActor in
-                  progress.cancel()
+              if !viewModel.handlingDuplicates {
+                Button {
+                  Task { @MainActor in
+                    progress.cancel()
+                  }
+                } label: {
+                  Text("Cancel")
                 }
-              } label: {
-                Text("Cancel")
               }
             } else {
               Button {
