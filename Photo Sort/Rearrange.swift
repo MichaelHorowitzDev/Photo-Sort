@@ -314,7 +314,7 @@ actor ImageSorter {
       return false
     }
 
-    let url: URL
+    let destinationURL: URL
     if options.renamePhotosToExif {
       let date = fileDate.formatted(format: options.renamePhotosFormat)
       processedDates[date, default: 0] += 1
@@ -326,29 +326,29 @@ actor ImageSorter {
       if !sourceURL.pathExtension.isEmpty {
         path.append("." + sourceURL.pathExtension)
       }
-      url = outputURL.appendingPathComponent(path)
+      destinationURL = outputURL.appendingPathComponent(path)
     } else {
-      url = outputURL.appendingPathComponent(sourceURL.lastPathComponent)
+      destinationURL = outputURL.appendingPathComponent(sourceURL.lastPathComponent)
     }
 
-    destinationFileMap[originalDestinationURL] = url
+    destinationFileMap[originalDestinationURL] = destinationURL
 
     do {
       try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
 
       if options.copy {
-        try FileManager.default.copyItem(at: sourceURL, to: url)
+        try FileManager.default.copyItem(at: sourceURL, to: destinationURL)
       } else {
-        try FileManager.default.moveItem(at: sourceURL, to: url)
+        try FileManager.default.moveItem(at: sourceURL, to: destinationURL)
       }
       let attributes: [FileAttributeKey: Any] = [
         .creationDate: options.creationDateExif ? fileDate : Date(),
         .modificationDate: options.modificationDateExif ? fileDate : Date()
       ]
-      try FileManager.default.setAttributes(attributes, ofItemAtPath: url.path)
+      try FileManager.default.setAttributes(attributes, ofItemAtPath: destinationURL.path)
 
     } catch CocoaError.fileWriteFileExists {
-      duplicateFiles.insert(DuplicateFile(source: sourceURL, destination: url))
+      duplicateFiles.insert(DuplicateFile(source: sourceURL, destination: destinationURL))
       return false
     } catch {
       throw error
