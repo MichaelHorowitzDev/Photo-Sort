@@ -172,6 +172,11 @@ actor ImageSorter {
         }
       let count = allFiles.count
 
+      if count == 0 {
+        await reportError(SortError.noFilesFound)
+        return
+      }
+
       self.progress = Progress(totalUnitCount: Int64(count))
 
       await updateProgress(progress)
