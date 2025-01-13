@@ -88,7 +88,7 @@ struct ImageSortOptions {
 
 enum SortError: String, LocalizedError {
   case directoryDoesntExist = "Directory Doesn't Exist"
-  case operationCancelled = "Operation Cancelled"
+  case operationCancelled = "Operation Cancelled\n\nSome files may still have been moved or copied."
   case noFilesFound = "No Photos or Videos Found"
 
   var errorDescription: String? {
