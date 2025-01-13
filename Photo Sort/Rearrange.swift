@@ -22,7 +22,11 @@ private func getVideoDate(url: URL) -> Date? {
 private func getTiffDate(url: URL) -> Date? {
   let metadata = ImageMetadata(imageURL: url)
 
-  return metadata?.tiff?.dateTime ?? metadata?.exif?.dateTime ?? (try? FileManager.default.attributesOfItem(atPath: url.path) as [FileAttributeKey: Any])?[FileAttributeKey.creationDate] as? Date
+  let tiffDate = metadata?.tiff?.dateTime
+  let exifDate = metadata?.exif?.dateTimeOriginal
+  let fileCreationDate = (try? FileManager.default.attributesOfItem(atPath: url.path) as [FileAttributeKey: Any])?[.creationDate] as? Date
+
+  return tiffDate ?? exifDate ?? fileCreationDate
 }
 
 private func getFiles(url: URL) -> FileManager.DirectoryEnumerator? {
