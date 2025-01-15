@@ -8,28 +8,28 @@
 import Photos
 import EXIF
 
-private func getVideoDate(for url: URL) -> Date? {
+private func getVideoDate(for url: URL) throws -> Date? {
   let asset = AVAsset(url: url)
   let metadata = asset.metadata
 
-  return {
+  return try (
     metadata.first(where: { $0.commonKey == .commonKeyCreationDate })?.dateValue ??
-    (try? FileManager.default.attributesOfItem(atPath: url.path) as [FileAttributeKey: Any])?[.creationDate] as? Date
-  }()
+    (try FileManager.default.attributesOfItem(atPath: url.path) as [FileAttributeKey: Any])[.creationDate] as? Date
+  )
 }
 
-private func getImageDate(for url: URL) -> Date? {
+private func getImageDate(for url: URL) throws -> Date? {
   let metadata = ImageMetadata(imageURL: url)
 
-  return {
+  return try (
     metadata?.tiff?.dateTime ??
     metadata?.exif?.dateTimeOriginal ??
-    (try? FileManager.default.attributesOfItem(atPath: url.path) as [FileAttributeKey: Any])?[.creationDate] as? Date
-  }()
+    (try FileManager.default.attributesOfItem(atPath: url.path) as [FileAttributeKey: Any])[.creationDate] as? Date
+  )
 }
 
-private func getFileDate(for url: URL) -> Date? {
-  isImageFile(url) ? getImageDate(for: url) : getVideoDate(for: url)
+private func getFileDate(for url: URL) throws -> Date? {
+  try isImageFile(url) ? getImageDate(for: url) : getVideoDate(for: url)
 }
 
 private func getFiles(for url: URL) -> FileManager.DirectoryEnumerator? {
@@ -234,7 +234,12 @@ actor ImageSorter {
 
     switch dupeFileOption {
     case .keepBoth:
-      await keepBoth()
+      do {
+        try await keepBoth()
+      } catch {
+        await reportError(error)
+        return
+      }
     case .skip:
       break
     case .replace:
@@ -258,8 +263,8 @@ actor ImageSorter {
 
     await updateProgress(progress)
 
-    func keepBoth() async {
-      guard let fileDate = getFileDate(for: file) else { return }
+    func keepBoth() async throws {
+      guard let fileDate = try getFileDate(for: file) else { return }
 
       var n = 1
       while true {
@@ -294,7 +299,7 @@ actor ImageSorter {
       return true
     }
 
-    guard let fileDate = getFileDate(for: sourceURL) else { return true }
+    guard let fileDate = try getFileDate(for: sourceURL) else { return true }
 
     let pathTypes = [
       options.year ? String(fileDate.year) : "",
