@@ -414,7 +414,8 @@ struct ContentView: View {
               service?.recipients = ["email@michaelhorowitz.dev"]
               service?.subject = "Photo Reorganizer Support"
               let version = ProcessInfo.processInfo.operatingSystemVersionString
-              service?.perform(withItems: ["\n\nmacOS \(version)\n\nApp Version 1.2"])
+              let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown Version"
+              service?.perform(withItems: ["\n\nmacOS \(version)\n\nApp Version \(appVersion)"])
             }
             .padding()
           }
