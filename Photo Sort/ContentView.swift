@@ -348,8 +348,10 @@ struct ContentView: View {
                 HStack {
                   TextField("", text: $viewModel.renameFormat)
                     .disabled(!viewModel.rename)
-                  Link(destination: URL(string: "https://nsdateformatter.com/")!) {
-                    Text("􀅴")
+                  if let url = URL(string: "https://nsdateformatter.com/") {
+                    Link(destination: url) {
+                      Text("􀅴")
+                    }
                   }
                 }
                 Text("Format for Current Date:")
