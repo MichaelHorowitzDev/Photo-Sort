@@ -322,8 +322,10 @@ actor ImageSorter {
     let destinationURL: URL
     if options.renamePhotosToExif {
       let date = fileDate.formatted(format: options.renamePhotosFormat)
-      processedDates[date, default: 0] += 1
-      let number = processedDates[date]!
+
+      let number = processedDates[date, default: 0] + 1
+      processedDates[date] = number
+
       let formattedNumber = NumberFormatterValue(number)
         .minimumIntegerDigits(3)
         .string()!
