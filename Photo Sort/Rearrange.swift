@@ -7,6 +7,7 @@
 
 import Photos
 import EXIF
+import CryptoKit
 
 private func getVideoDate(for url: URL) throws -> Date? {
   let asset = AVAsset(url: url)
@@ -141,7 +142,7 @@ actor ImageSorter {
     self.handleError = handleError
   }
 
-  func reportError(_ error: Error) async {
+  func reportError(_ error: Error) {
     self.processedDates.removeAll()
     self.duplicateFiles.removeAll()
     self.destinationFileMap.removeAll()
@@ -174,7 +175,7 @@ actor ImageSorter {
       let count = allFiles.count
 
       if count == 0 {
-        await reportError(SortError.noFilesFound)
+        reportError(SortError.noFilesFound)
         return
       }
 
@@ -184,7 +185,7 @@ actor ImageSorter {
 
       for file in allFiles {
         if progress.isCancelled {
-          await reportError(SortError.operationCancelled)
+          reportError(SortError.operationCancelled)
           return
         }
         let fileURL = inputDir.appendingPathComponent(file)
@@ -195,17 +196,26 @@ actor ImageSorter {
             await updateProgress(progress)
           }
         } catch {
-          await reportError(error)
+          reportError(error)
           return
         }
       }
 
-      if !duplicateFiles.isEmpty {
-        self.handleDuplicates(self)
-      }
+      for duplicateFile in duplicateFiles {
+        do {
+          if try !areDuplicates(source: duplicateFile.source, destination: duplicateFile.destination) {
+            try keepBoth(file: duplicateFile.source, destination: duplicateFile.destination)
+          }
 
+          progress.completedUnitCount = progress.completedUnitCount + 1
+          await updateProgress(progress)
+        } catch {
+          reportError(error)
+          return
+        }
+      }
     } else {
-      await reportError(SortError.directoryDoesntExist)
+      reportError(SortError.directoryDoesntExist)
       return
     }
   }
@@ -235,9 +245,9 @@ actor ImageSorter {
     switch dupeFileOption {
     case .keepBoth:
       do {
-        try await keepBoth()
+        try keepBoth(file: file, destination: destination)
       } catch {
-        await reportError(error)
+        reportError(error)
         return
       }
     case .skip:
@@ -252,7 +262,7 @@ actor ImageSorter {
         }
 
       } catch {
-        await reportError(error)
+        reportError(error)
         return
       }
     }
@@ -262,36 +272,68 @@ actor ImageSorter {
     progress.completedUnitCount = progress.completedUnitCount + 1
 
     await updateProgress(progress)
+  }
 
-    func keepBoth() async throws {
-      guard let fileDate = try getFileDate(for: file) else { return }
+  private func keepBoth(file: URL, destination: URL) throws {
+    guard let fileDate = try getFileDate(for: file) else { return }
 
-      var n = 1
-      while true {
-        let destination = destination.appendingToFileName(" (\(n))")
-        do {
-          if options.copy {
-            try FileManager.default.copyItem(at: file, to: destination)
-          } else {
-            try FileManager.default.moveItem(at: file, to: destination)
-          }
-          let attributes: [FileAttributeKey: Any] = [
-            .creationDate: options.creationDateExif ? fileDate : Date(),
-            .modificationDate: options.modificationDateExif ? fileDate : Date()
-          ]
-          try FileManager.default.setAttributes(attributes, ofItemAtPath: destination.path)
-
-          break
-
-        } catch CocoaError.fileWriteFileExists {
-          n += 1
-          continue
-        } catch {
-          await reportError(error)
-          return
+    var n = 1
+    while true {
+      let destination = destination.appendingToFileName(" (\(n))")
+      do {
+        if options.copy {
+          try FileManager.default.copyItem(at: file, to: destination)
+        } else {
+          try FileManager.default.moveItem(at: file, to: destination)
         }
+        let attributes: [FileAttributeKey: Any] = [
+          .creationDate: options.creationDateExif ? fileDate : Date(),
+          .modificationDate: options.modificationDateExif ? fileDate : Date()
+        ]
+        try FileManager.default.setAttributes(attributes, ofItemAtPath: destination.path)
+
+        break
+
+      } catch CocoaError.fileWriteFileExists {
+        n += 1
+        continue
+      } catch {
+        reportError(error)
+        return
       }
     }
+  }
+
+  private func areDuplicates(source: URL, destination: URL) throws -> Bool {
+    let sourceAttributes = try FileManager.default.attributesOfItem(atPath: source.path)
+    let destinationAttributes = try FileManager.default.attributesOfItem(atPath: destination.path)
+
+    let sourceSize = (sourceAttributes[.size] as? NSNumber)?.uint64Value
+    let destinationSize = (destinationAttributes[.size] as? NSNumber)?.uint64Value
+
+    guard sourceSize == destinationSize else { return false }
+
+    let sourceHash = try getFileHash(for: source)
+    let destinationHash = try getFileHash(for: destination)
+
+    return sourceHash == destinationHash
+  }
+
+  private func getFileHash(for url: URL) throws -> SHA256.Digest {
+    let fileHandle = try FileHandle(forReadingFrom: url)
+    defer {
+      try? fileHandle.close()
+    }
+
+    var hasher = SHA256()
+
+    while true {
+      let data = try fileHandle.read(upToCount: 1024 * 1024)
+      guard let data, !data.isEmpty else { break }
+      hasher.update(data: data)
+    }
+
+    return hasher.finalize()
   }
 
   private func arrangeImage(sourceURL: URL, outputDir: URL, options: ImageSortOptions) throws -> Bool {
@@ -315,7 +357,7 @@ actor ImageSorter {
     originalDestinationURL = outputURL.appendingPathComponent(sourceURL.lastPathComponent)
 
     if let url = destinationFileMap[originalDestinationURL] {
-      duplicateFiles.insert(DuplicateFile(source: url, destination: url))
+      duplicateFiles.insert(DuplicateFile(source: sourceURL, destination: url))
       return false
     }
 
