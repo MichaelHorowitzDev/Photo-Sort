@@ -9,7 +9,9 @@ import SwiftUI
 import StoreKit
 
 enum TypesToSort: String, CaseIterable {
-  case photos, videos, both
+  case photos = "Photos"
+  case videos = "Videos"
+  case both = "Photos & Videos"
 }
 
 @MainActor
@@ -333,10 +335,10 @@ struct ContentView: View {
             Toggle("Sort into days", isOn: $viewModel.day)
             Toggle("Copy Photos", isOn: $viewModel.copyPhotos)
               .help("Recommended: Copy keeps the original files. Move removes files from the source folder after they are sorted.")
-            Toggle("Creation Date Same as EXIF Date", isOn: $viewModel.creationDateExif)
-            Toggle("Modification Date same as EXIF Date", isOn: $viewModel.modificationDateExif)
+            Toggle("Set Creation Date to EXIF Date", isOn: $viewModel.creationDateExif)
+            Toggle("Set Modification Date to EXIF Date", isOn: $viewModel.modificationDateExif)
             HStack {
-              Text("Types to Sort")
+              Text("Media to Sort")
               Picker("", selection: $viewModel.typesToSort) {
                 ForEach(TypesToSort.allCases.reversed(), id: \.self) { type in
                   Text(type.rawValue.capitalized)
