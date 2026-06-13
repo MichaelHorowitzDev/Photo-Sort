@@ -346,7 +346,7 @@ actor ImageSorter {
     let pathTypes = [
       options.year ? String(fileDate.year) : "",
       options.month ? fileDate.month(from: options.monthFormat) : "",
-      options.day ? String(fileDate.day) : ""
+      options.day ? String(format: "%02d", fileDate.day) : ""
     ].filter { !$0.isEmpty }
 
     let outputURL = pathTypes.reduce(outputDir) { url, component in
