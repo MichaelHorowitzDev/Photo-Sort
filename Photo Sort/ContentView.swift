@@ -296,6 +296,8 @@ struct ContentView: View {
               Image(systemName: "folder.fill.badge.plus")
             }
             Spacer()
+            Toggle("Same as input", isOn: .constant(false))
+              .hidden()
           }
           HStack {
             Group {
