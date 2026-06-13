@@ -23,8 +23,9 @@ private func getImageDate(for url: URL) throws -> Date? {
   let metadata = ImageMetadata(imageURL: url)
 
   return try (
-    metadata?.tiff?.dateTime ??
     metadata?.exif?.dateTimeOriginal ??
+    metadata?.exif?.dateTimeDigitized ??
+    metadata?.tiff?.dateTime ??
     (try FileManager.default.attributesOfItem(atPath: url.path) as [FileAttributeKey: Any])[.creationDate] as? Date
   )
 }
