@@ -10,6 +10,7 @@
 		8B3E448328D4C3E9006E6707 /* NumberFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B3E448228D4C3E9006E6707 /* NumberFormatter.swift */; };
 		8B485D20286A4574009B98BE /* Rearrange.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B485D1F286A4574009B98BE /* Rearrange.swift */; };
 		8B485D22286A58B5009B98BE /* Date+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B485D21286A58B5009B98BE /* Date+Extensions.swift */; };
+		8B78598E2FDDC52D00393551 /* EXIF in Frameworks */ = {isa = PBXBuildFile; productRef = 8B78598D2FDDC52D00393551 /* EXIF */; };
 		8B7BDACC2C00EBBD00025A5F /* EXIF in Frameworks */ = {isa = PBXBuildFile; productRef = 8B7BDACB2C00EBBD00025A5F /* EXIF */; };
 		8BA5C0572D2F91290044833D /* URL+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BA5C0562D2F91290044833D /* URL+Extensions.swift */; };
 		8BAC2D78282AB7A000C428F5 /* Photo_SortApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BAC2D77282AB7A000C428F5 /* Photo_SortApp.swift */; };
@@ -37,6 +38,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8B78598E2FDDC52D00393551 /* EXIF in Frameworks */,
 				8B7BDACC2C00EBBD00025A5F /* EXIF in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -112,6 +114,7 @@
 			name = "Photo Sort";
 			packageProductDependencies = (
 				8B7BDACB2C00EBBD00025A5F /* EXIF */,
+				8B78598D2FDDC52D00393551 /* EXIF */,
 			);
 			productName = "Photo Sort";
 			productReference = 8BAC2D74282AB7A000C428F5 /* Photo Reorganizer.app */;
@@ -142,7 +145,7 @@
 			);
 			mainGroup = 8BAC2D6B282AB7A000C428F5;
 			packageReferences = (
-				8B7BDACA2C00EBBD00025A5F /* XCLocalSwiftPackageReference "../EXIF" */,
+				8B78598C2FDDC52D00393551 /* XCLocalSwiftPackageReference "EXIF" */,
 			);
 			productRefGroup = 8BAC2D75282AB7A000C428F5 /* Products */;
 			projectDirPath = "";
@@ -328,10 +331,10 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = "Photo Sort/Photo_Sort.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"Photo Sort/Preview Content\"";
 				DEVELOPMENT_TEAM = 2P8U588M2T;
@@ -363,12 +366,14 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = "Photo Sort/Photo_Sort.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "3rd Party Mac Developer Application";
+				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"Photo Sort/Preview Content\"";
-				DEVELOPMENT_TEAM = 2P8U588M2T;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = 2P8U588M2T;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -384,6 +389,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "com.michaelhorowitz.Photo-Sort";
 				PRODUCT_NAME = "Photo Reorganizer";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = PHOTOSORTAPPSTORE;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 6.0;
 			};
@@ -413,13 +419,17 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		8B7BDACA2C00EBBD00025A5F /* XCLocalSwiftPackageReference "../EXIF" */ = {
+		8B78598C2FDDC52D00393551 /* XCLocalSwiftPackageReference "EXIF" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../EXIF;
+			relativePath = EXIF;
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		8B78598D2FDDC52D00393551 /* EXIF */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = EXIF;
+		};
 		8B7BDACB2C00EBBD00025A5F /* EXIF */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = EXIF;
