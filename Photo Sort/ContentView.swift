@@ -362,6 +362,10 @@ struct ContentView: View {
                 Text("Format for Current Date:")
                 Text(Date().formatted(format: viewModel.renameFormat))
               }
+              .onChange(of: viewModel.renameFormat) { _ in
+                let invalidCharacters = String("/:\\?%*|\"<>")
+                viewModel.renameFormat.removeAll { invalidCharacters.contains($0) }
+              }
               .fixedSize(horizontal: true, vertical: false)
               .labelsHidden()
             }
